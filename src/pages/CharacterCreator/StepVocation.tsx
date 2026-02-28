@@ -71,6 +71,13 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
     return null
   }
 
+  // Strip the parenthetical hint from button labels when a sub-choice UI will handle it
+  function getDisplayLabel(comp: string): string {
+    const sub = getSubChoice(comp)
+    if (sub?.type === 'buttons') return comp.replace(/\s*\([^)]+\)/, '').trim()
+    return comp
+  }
+
   function resolveCompName(slotIdx: number): string {
     const chosen = compChoices[slotIdx] ?? ''
     const sub = compSubChoices[slotIdx]
@@ -226,7 +233,7 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
                         setCompSubChoices(prev => { const next = { ...prev }; delete next[slotIdx]; return next })
                       }}
                     >
-                      {option}
+                      {getDisplayLabel(option)}
                     </button>
                   ))}
                 </div>
