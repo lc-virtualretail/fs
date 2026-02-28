@@ -8,6 +8,7 @@ import type { SkillBonus } from '@/types/rules'
 import { getMaxStatValue } from '@/engine/derived'
 import { CharacteristicsTable } from './components/CharacteristicsTable'
 import type { StepProps } from './creatorTypes'
+import { getSubChoice, getDisplayLabel, resolveWithSub } from './competencyUtils'
 
 export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) {
   // Get vocations for this class + free vocations
@@ -51,39 +52,8 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
     updateDraft({ vocacion: id })
   }
 
-  // Returns sub-choice descriptor for competencies that need one:
-  // - { type: 'buttons', options } for slash/o-separated options and bare "Armas a Distancia"
-  // - { type: 'text', placeholder } for "cualquiera" cases
-  // - null when already fully specified
-  function getSubChoice(comp: string): { type: 'buttons'; options: string[] } | { type: 'text'; placeholder: string } | null {
-    if (comp === 'Armas a Distancia') {
-      return { type: 'buttons', options: ['Balas', 'Energía', 'Artefacto (elige artefacto)', 'Tiro con Arco'] }
-    }
-    const match = comp.match(/\(([^)]+)\)/)
-    if (!match) return null
-    const content = match[1] ?? ''
-    if (content === 'cualquiera') {
-      const base = comp.replace(/\s*\([^)]+\)/, '').trim()
-      return { type: 'text', placeholder: `Especifica ${base}…` }
-    }
-    const opts = content.split(/\/| o /).map(s => s.trim()).filter(Boolean)
-    if (opts.length > 1) return { type: 'buttons', options: opts }
-    return null
-  }
-
-  // Strip the parenthetical hint from button labels when a sub-choice UI will handle it
-  function getDisplayLabel(comp: string): string {
-    const sub = getSubChoice(comp)
-    if (sub?.type === 'buttons') return comp.replace(/\s*\([^)]+\)/, '').trim()
-    return comp
-  }
-
   function resolveCompName(slotIdx: number): string {
-    const chosen = compChoices[slotIdx] ?? ''
-    const sub = compSubChoices[slotIdx]
-    if (!sub) return chosen
-    if (chosen === 'Armas a Distancia') return `Armas a Distancia (${sub})`
-    return chosen.replace(/\([^)]+\)/, `(${sub})`)
+    return resolveWithSub(compChoices[slotIdx] ?? '', compSubChoices[slotIdx])
   }
 
   function resolveSkillBonuses(): { key: SkillKey; value: number }[] {

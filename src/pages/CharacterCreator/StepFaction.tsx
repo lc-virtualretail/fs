@@ -6,24 +6,27 @@ import type { CharacteristicKey, SkillKey } from '@/types/character'
 import { getMaxStatValue } from '@/engine/derived'
 import { CharacteristicsTable } from './components/CharacteristicsTable'
 import type { StepProps } from './creatorTypes'
+import { getSubChoice, getDisplayLabel, resolveWithSub } from './competencyUtils'
 
 export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
-  // Filter factions by class
   const availableFactions = FACTIONS.filter(f => f.clase === draft.clase)
   const selectedFaction = FACTIONS.find(f => f.id === draft.faccion)
 
-  // Competency group choices: one selection per group index
+  // One selection per choice group
   const [compGroupChoices, setCompGroupChoices] = useState<string[]>([])
-  // Characteristic choices: index → chosen key (for bonuses with alternativas)
+  // Sub-choice for each choice group button that needs further specification
+  const [compGroupSubChoices, setCompGroupSubChoices] = useState<Record<number, string>>({})
+  // Sub-choice for each fixed competency that needs further specification
+  const [fixedSubChoices, setFixedSubChoices] = useState<Record<number, string>>({})
   const [charChoices, setCharChoices] = useState<Record<number, CharacteristicKey>>({})
-  // Skill choices: index → chosen key (for bonuses with alternativas)
   const [skillChoices, setSkillChoices] = useState<Record<number, SkillKey>>({})
 
   const [preStepChars] = useState(draft.caracteristicas)
 
-  // Reset choices when faction changes
   useEffect(() => {
     setCompGroupChoices([])
+    setCompGroupSubChoices({})
+    setFixedSubChoices({})
     setCharChoices({})
     setSkillChoices({})
   }, [draft.faccion])
@@ -44,19 +47,14 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
 
   function computeNewStats() {
     if (!selectedFaction) return null
-
     const chars = { ...draft.caracteristicas }
     selectedFaction.aprendizaje.caracteristicas.forEach((b, i) => {
-      const key = getResolvedCharKey(i, b)
-      chars[key] += b.valor
+      chars[getResolvedCharKey(i, b)] += b.valor
     })
-
     const skills = { ...draft.habilidades }
     selectedFaction.aprendizaje.habilidades.forEach((b, i) => {
-      const key = getResolvedSkillKey(i, b)
-      skills[key] += b.valor
+      skills[getResolvedSkillKey(i, b)] += b.valor
     })
-
     return { chars, skills }
   }
 
@@ -66,35 +64,31 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
     if (!result) return
 
     const maxVal = getMaxStatValue(1)
-
-    // Handle characteristic excess
     const chars = { ...result.chars }
-    let charExcess = 0
     for (const key of Object.keys(chars) as CharacteristicKey[]) {
-      if (chars[key] > maxVal) {
-        charExcess += chars[key] - maxVal
-        chars[key] = maxVal
-      }
+      if (chars[key] > maxVal) chars[key] = maxVal
     }
-
-    // Handle skill excess
     const skills = { ...result.skills }
-    let skillExcess = 0
     for (const key of Object.keys(skills) as SkillKey[]) {
-      if (skills[key] > maxVal) {
-        skillExcess += skills[key] - maxVal
-        skills[key] = maxVal
-      }
+      if (skills[key] > maxVal) skills[key] = maxVal
     }
 
-    // Build competencies: all fixed + one selection per group
+    // Resolve fixed competencies (apply sub-choices where needed)
+    const resolvedFixed = selectedFaction.aprendizaje.competenciasFijas.map((c, i) =>
+      resolveWithSub(c, fixedSubChoices[i])
+    )
+
+    // Resolve choice group competencies (apply sub-choices where needed)
+    const resolvedChoices = compGroupChoices
+      .map((chosen, gi) => resolveWithSub(chosen, compGroupSubChoices[gi]))
+      .filter(Boolean)
+
     const newComps = [
       ...draft.competencias,
-      ...selectedFaction.aprendizaje.competenciasFijas.map(c => ({ nombre: c, origen: 'Aprendizaje' })),
-      ...compGroupChoices.filter(Boolean).map(c => ({ nombre: c, origen: 'Aprendizaje' })),
+      ...resolvedFixed.map(c => ({ nombre: c, origen: 'Aprendizaje' })),
+      ...resolvedChoices.map(c => ({ nombre: c, origen: 'Aprendizaje' })),
     ]
 
-    // Build benefits
     const newBenefits = [
       ...draft.beneficios,
       {
@@ -117,16 +111,23 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
       premioMaterial: selectedFaction.premioMaterial,
     })
 
-    if (charExcess > 0 || skillExcess > 0) {
-      // TODO: Show excess handler dialog
-    }
-
     goNext()
   }
 
-  // Validation: all required choices made
-  const numCompGroups = selectedFaction?.aprendizaje.competenciasEleccion.length ?? 0
-  const compGroupsComplete = compGroupChoices.filter(Boolean).length >= numCompGroups
+  // Validation
+  const compGroupsComplete = !selectedFaction || selectedFaction.aprendizaje.competenciasEleccion.every((_, gi) => {
+    const chosen = compGroupChoices[gi]
+    if (!chosen) return false
+    const sub = getSubChoice(chosen)
+    if (sub !== null) return !!compGroupSubChoices[gi]
+    return true
+  })
+
+  const fixedComplete = !selectedFaction || selectedFaction.aprendizaje.competenciasFijas.every((c, i) => {
+    const sub = getSubChoice(c)
+    if (sub !== null) return !!fixedSubChoices[i]
+    return true
+  })
 
   const numCharChoices = selectedFaction?.aprendizaje.caracteristicas.filter(b => b.alternativas).length ?? 0
   const charChoicesComplete = Object.keys(charChoices).length >= numCharChoices
@@ -137,6 +138,7 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
   const canProceed =
     draft.faccion !== '' &&
     compGroupsComplete &&
+    fixedComplete &&
     charChoicesComplete &&
     skillChoicesComplete
 
@@ -196,11 +198,53 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
           <div className="step-section">
             <h3>Competencias de Aprendizaje</h3>
 
-            {/* Fixed competencies */}
+            {/* Fixed competencies — with sub-choice inputs where needed */}
             {selectedFaction.aprendizaje.competenciasFijas.length > 0 && (
-              <div className="info-box" style={{ marginBottom: 'var(--space-sm)' }}>
-                <strong>Fijas:</strong>{' '}
-                {selectedFaction.aprendizaje.competenciasFijas.join(', ')}
+              <div style={{ marginBottom: 'var(--space-sm)' }}>
+                <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>Fijas:</div>
+                {selectedFaction.aprendizaje.competenciasFijas.map((c, i) => {
+                  const sub = getSubChoice(c)
+                  if (!sub) {
+                    return (
+                      <div key={i} className="info-box" style={{ marginBottom: 'var(--space-xs)' }}>
+                        {c}
+                      </div>
+                    )
+                  }
+                  return (
+                    <div key={i} style={{ marginBottom: 'var(--space-sm)' }}>
+                      <div className="info-box" style={{ marginBottom: 'var(--space-xs)' }}>
+                        {getDisplayLabel(c)}
+                      </div>
+                      <div style={{ paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
+                        <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
+                          Especifica subcategoría:
+                        </div>
+                        {sub.type === 'buttons' ? (
+                          <div className="choice-options">
+                            {sub.options.map(opt => (
+                              <button
+                                key={opt}
+                                className={`choice-btn ${fixedSubChoices[i] === opt ? 'chosen' : ''}`}
+                                onClick={() => setFixedSubChoices(prev => ({ ...prev, [i]: opt }))}
+                              >
+                                {opt}
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <input
+                            type="text"
+                            placeholder={sub.placeholder}
+                            value={fixedSubChoices[i] ?? ''}
+                            onChange={e => setFixedSubChoices(prev => ({ ...prev, [i]: e.target.value }))}
+                            style={{ width: '100%', maxWidth: 320 }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
 
@@ -219,12 +263,46 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                           next[gi] = c
                           return next
                         })
+                        setCompGroupSubChoices(prev => { const next = { ...prev }; delete next[gi]; return next })
                       }}
                     >
-                      {c}
+                      {getDisplayLabel(c)}
                     </button>
                   ))}
                 </div>
+                {/* Sub-choice when selected option requires further specification */}
+                {compGroupChoices[gi] && (() => {
+                  const sub = getSubChoice(compGroupChoices[gi])
+                  if (!sub) return null
+                  return (
+                    <div style={{ marginTop: 'var(--space-xs)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
+                      <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
+                        Especifica subcategoría:
+                      </div>
+                      {sub.type === 'buttons' ? (
+                        <div className="choice-options">
+                          {sub.options.map(opt => (
+                            <button
+                              key={opt}
+                              className={`choice-btn ${compGroupSubChoices[gi] === opt ? 'chosen' : ''}`}
+                              onClick={() => setCompGroupSubChoices(prev => ({ ...prev, [gi]: opt }))}
+                            >
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder={sub.placeholder}
+                          value={compGroupSubChoices[gi] ?? ''}
+                          onChange={e => setCompGroupSubChoices(prev => ({ ...prev, [gi]: e.target.value }))}
+                          style={{ width: '100%', maxWidth: 320 }}
+                        />
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             ))}
           </div>
@@ -234,19 +312,11 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
             <h3>Bonificaciones de Características</h3>
             <div className="bonus-list">
               {selectedFaction.aprendizaje.caracteristicas.map((b, i) => {
-                const allOptions = b.alternativas
-                  ? [b.caracteristica, ...b.alternativas]
-                  : [b.caracteristica]
-
+                const allOptions = b.alternativas ? [b.caracteristica, ...b.alternativas] : [b.caracteristica]
                 if (allOptions.length === 1) {
                   const meta = CHARACTERISTICS.find(c => c.key === b.caracteristica)
-                  return (
-                    <div key={i} className="bonus-item bonus-fixed">
-                      {meta?.nombre} +{b.valor}
-                    </div>
-                  )
+                  return <div key={i} className="bonus-item bonus-fixed">{meta?.nombre} +{b.valor}</div>
                 }
-
                 return (
                   <div key={i} className="bonus-item">
                     <div className="choice-group-label">Elige +{b.valor}:</div>
@@ -275,19 +345,11 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
             <h3>Bonificaciones de Habilidades</h3>
             <div className="bonus-list">
               {selectedFaction.aprendizaje.habilidades.map((b, i) => {
-                const allOptions = b.alternativas
-                  ? [b.habilidad, ...b.alternativas]
-                  : [b.habilidad]
-
+                const allOptions = b.alternativas ? [b.habilidad, ...b.alternativas] : [b.habilidad]
                 if (allOptions.length === 1) {
                   const meta = SKILLS.find(s => s.key === b.habilidad)
-                  return (
-                    <div key={i} className="bonus-item bonus-fixed">
-                      {meta?.nombre} +{b.valor}
-                    </div>
-                  )
+                  return <div key={i} className="bonus-item bonus-fixed">{meta?.nombre} +{b.valor}</div>
                 }
-
                 return (
                   <div key={i} className="bonus-item">
                     <div className="choice-group-label">Elige +{b.valor}:</div>
@@ -323,10 +385,7 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
           {preview && (
             <div className="step-section">
               <h3>Características acumuladas</h3>
-              <CharacteristicsTable
-                current={preview.chars}
-                previous={preStepChars}
-              />
+              <CharacteristicsTable current={preview.chars} previous={preStepChars} />
             </div>
           )}
         </>
