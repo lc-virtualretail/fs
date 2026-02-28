@@ -1,0 +1,8 @@
+{
+  "name": "Fading Suns — Compañero de Juego",
+  "short_name": "Fading Suns",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a2e",
+  "theme_color": "#c4a35a"
+}
