@@ -24,6 +24,7 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
   const favoredVocation = selectedFaction?.vocacionFavorecida
 
   const [compChoices, setCompChoices] = useState<Record<number, string>>({})
+  const [compSubChoices, setCompSubChoices] = useState<Record<number, string>>({})
   const [skillChoices, setSkillChoices] = useState<Record<number, SkillKey>>({})
   const [benefitChoice, setBenefitChoice] = useState('')
   const [preStepChars] = useState(draft.caracteristicas)
@@ -41,12 +42,41 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
       if (slot.length === 1 && slot[0]) autoChoices[i] = slot[0]
     })
     setCompChoices(autoChoices)
+    setCompSubChoices({})
     setSkillChoices({})
     setBenefitChoice('')
   }, [draft.vocacion])
 
   function selectVocation(id: string) {
     updateDraft({ vocacion: id })
+  }
+
+  // Returns sub-choice descriptor for competencies that need one:
+  // - { type: 'buttons', options } for slash/o-separated options and bare "Armas a Distancia"
+  // - { type: 'text', placeholder } for "cualquiera" cases
+  // - null when already fully specified
+  function getSubChoice(comp: string): { type: 'buttons'; options: string[] } | { type: 'text'; placeholder: string } | null {
+    if (comp === 'Armas a Distancia') {
+      return { type: 'buttons', options: ['Balas', 'Energía', 'Artefacto (elige artefacto)', 'Tiro con Arco'] }
+    }
+    const match = comp.match(/\(([^)]+)\)/)
+    if (!match) return null
+    const content = match[1] ?? ''
+    if (content === 'cualquiera') {
+      const base = comp.replace(/\s*\([^)]+\)/, '').trim()
+      return { type: 'text', placeholder: `Especifica ${base}…` }
+    }
+    const opts = content.split(/\/| o /).map(s => s.trim()).filter(Boolean)
+    if (opts.length > 1) return { type: 'buttons', options: opts }
+    return null
+  }
+
+  function resolveCompName(slotIdx: number): string {
+    const chosen = compChoices[slotIdx] ?? ''
+    const sub = compSubChoices[slotIdx]
+    if (!sub) return chosen
+    if (chosen === 'Armas a Distancia') return `Armas a Distancia (${sub})`
+    return chosen.replace(/\([^)]+\)/, `(${sub})`)
   }
 
   function resolveSkillBonuses(): { key: SkillKey; value: number }[] {
@@ -96,7 +126,7 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
     const newComps = [
       ...draft.competencias,
       ...selectedVocation.carrera.competencias.map((_, i) => ({
-        nombre: compChoices[i] ?? '',
+        nombre: resolveCompName(i),
         origen: 'Vocación',
       })).filter(c => c.nombre),
     ]
@@ -128,7 +158,13 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
   )
 
   const allCompChoicesMade = !selectedVocation || (
-    selectedVocation.carrera.competencias.every((_, i) => compChoices[i])
+    selectedVocation.carrera.competencias.every((_, i) => {
+      const chosen = compChoices[i]
+      if (!chosen) return false
+      const sub = getSubChoice(chosen)
+      if (sub !== null) return !!compSubChoices[i]
+      return true
+    })
   )
 
   const canProceed =
@@ -185,12 +221,48 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
                     <button
                       key={option}
                       className={`choice-btn ${compChoices[slotIdx] === option ? 'chosen' : ''}`}
-                      onClick={() => setCompChoices(prev => ({ ...prev, [slotIdx]: option }))}
+                      onClick={() => {
+                        setCompChoices(prev => ({ ...prev, [slotIdx]: option }))
+                        setCompSubChoices(prev => { const next = { ...prev }; delete next[slotIdx]; return next })
+                      }}
                     >
                       {option}
                     </button>
                   ))}
                 </div>
+                {/* Sub-choice when selected option requires further specification */}
+                {compChoices[slotIdx] && (() => {
+                  const sub = getSubChoice(compChoices[slotIdx])
+                  if (!sub) return null
+                  return (
+                    <div style={{ marginTop: 'var(--space-xs)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
+                      <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
+                        Especifica subcategoría:
+                      </div>
+                      {sub.type === 'buttons' ? (
+                        <div className="choice-options">
+                          {sub.options.map(opt => (
+                            <button
+                              key={opt}
+                              className={`choice-btn ${compSubChoices[slotIdx] === opt ? 'chosen' : ''}`}
+                              onClick={() => setCompSubChoices(prev => ({ ...prev, [slotIdx]: opt }))}
+                            >
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder={sub.placeholder}
+                          value={compSubChoices[slotIdx] ?? ''}
+                          onChange={e => setCompSubChoices(prev => ({ ...prev, [slotIdx]: e.target.value }))}
+                          style={{ width: '100%', maxWidth: 320 }}
+                        />
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             ))}
             <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginTop: 4 }}>
