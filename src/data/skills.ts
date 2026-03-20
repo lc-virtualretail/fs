@@ -16,7 +16,7 @@ export const SKILLS: SkillDefinition[] = [
   { key: 'interfaz', nombre: 'Interfaz', valorBase: 0, restringida: true, caracteristicasAsociadas: ['inteligencia', 'percepcion'] },
   { key: 'introspeccion', nombre: 'Introspección', valorBase: 3, restringida: false, caracteristicasAsociadas: ['voluntad', 'intuicion'] },
   { key: 'intrusion', nombre: 'Intrusión', valorBase: 3, restringida: false, caracteristicasAsociadas: ['destreza', 'percepcion'] },
-  { key: 'pelea', nombre: 'Pelea', valorBase: 3, restringida: false, caracteristicasAsociadas: ['fuerza', 'destreza'] },
+  { key: 'pelear', nombre: 'Pelear', valorBase: 3, restringida: false, caracteristicasAsociadas: ['fuerza', 'destreza'] },
   { key: 'observar', nombre: 'Observar', valorBase: 3, restringida: false, caracteristicasAsociadas: ['percepcion', 'intuicion'] },
   { key: 'oficios', nombre: 'Oficios', valorBase: 3, restringida: false, caracteristicasAsociadas: ['destreza', 'inteligencia'] },
   { key: 'pilotar', nombre: 'Pilotar', valorBase: 0, restringida: true, caracteristicasAsociadas: ['destreza', 'percepcion'] },

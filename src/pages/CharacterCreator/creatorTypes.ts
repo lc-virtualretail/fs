@@ -35,6 +35,15 @@ export const STEP_LABELS: Record<StepId, string> = {
   summary: 'Resumen',
 }
 
+// ─── Step Snapshots (for safe backtracking) ───
+
+export interface StepSnapshot {
+  caracteristicas: Characteristics
+  habilidades: Skills
+  competencias: CompetencyEntry[]
+  beneficios: BenefitEntry[]
+}
+
 // ─── Draft State ───
 
 export interface CharacterDraft {
@@ -54,6 +63,7 @@ export interface CharacterDraft {
   caracteristicaPrimaria: CharacteristicKey | ''
   caracteristicaSecundaria: CharacteristicKey | ''
   derechosDeNacimiento: string[]
+  donIluminacion: 'psi' | 'teurgia' | ''
 
   // Class
   clase: ClassId | ''
@@ -85,6 +95,12 @@ export interface CharacterDraft {
 
   // Equipment from vocation
   equipoVocacion: string[]
+
+  // Snapshots: state BEFORE each step applied its bonuses (for safe backtracking)
+  _snapshotPreClase?: StepSnapshot
+  _snapshotPreFaccion?: StepSnapshot
+  _snapshotPreVocacion?: StepSnapshot
+  _snapshotPreCustomization?: StepSnapshot
 }
 
 export function createEmptyDraft(): CharacterDraft {
@@ -103,6 +119,7 @@ export function createEmptyDraft(): CharacterDraft {
     caracteristicaPrimaria: '',
     caracteristicaSecundaria: '',
     derechosDeNacimiento: [],
+    donIluminacion: '',
 
     clase: '',
     faccion: '',

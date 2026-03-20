@@ -8,6 +8,9 @@ import { FACTIONS } from '@/data/factions'
 import { VOCATIONS } from '@/data/vocations'
 import { CHARACTERISTIC_CATEGORIES } from '@/data/characteristics'
 import { calcVitality, calcImpulse, calcReanimation, calcBankCapacity, calcUsosMax, calcTecgnosis } from '@/engine/derived'
+import { Tooltip } from '@/components/ui/Tooltip'
+import { CHARACTERISTIC_TOOLTIPS, SKILL_TOOLTIPS, COMPETENCY_TOOLTIPS, BENEFIT_TOOLTIPS } from '@/data/tooltips'
+import { buildExportPayload, downloadExport, exportFilename } from '@/utils/characterExportImport'
 import type { Character } from '@/types/character'
 
 export function CharacterSheet() {
@@ -60,7 +63,13 @@ export function CharacterSheet() {
   return (
     <div className="sheet">
       <header className="sheet-header">
-        <Link to="/personajes" className="sheet-back">← Personajes</Link>
+        <div className="sheet-header-top">
+          <Link to="/personajes" className="sheet-back">← Personajes</Link>
+          <button className="sheet-export-btn" onClick={() => {
+            const payload = buildExportPayload([character])
+            downloadExport(payload, exportFilename(character.nombre))
+          }}>Exportar</button>
+        </div>
         <h1 className="sheet-name">{character.nombre}</h1>
         <div className="sheet-subtitle">
           {species?.nombre} · {cls?.nombre} · {faction?.nombre} · Nivel {character.nivel}
@@ -92,8 +101,12 @@ export function CharacterSheet() {
                   const val = character.caracteristicas[key]
                   return (
                     <td key={key}>
-                      <div className="char-label">{key.slice(0, 3).toUpperCase()}</div>
-                      <div className="char-value">{val}</div>
+                      <Tooltip text={CHARACTERISTIC_TOOLTIPS[key]}>
+                        <div>
+                          <div className="char-label">{key.slice(0, 3).toUpperCase()}</div>
+                          <div className="char-value">{val}</div>
+                        </div>
+                      </Tooltip>
                     </td>
                   )
                 })}
@@ -111,13 +124,15 @@ export function CharacterSheet() {
             const val = character.habilidades[skill.key]
             const changed = val !== skill.valorBase
             return (
-              <div key={skill.key} className={`skill-row ${changed ? 'skill-changed' : ''}`}>
-                <span className="skill-name">
-                  {skill.nombre}
-                  {skill.restringida && <span className="skill-restricted"> (R)</span>}
-                </span>
-                <span className="skill-value">{val}</span>
-              </div>
+              <Tooltip key={skill.key} text={SKILL_TOOLTIPS[skill.key]}>
+                <div className={`skill-row ${changed ? 'skill-changed' : ''}`}>
+                  <span className="skill-name">
+                    {skill.nombre}
+                    {skill.restringida && <span className="skill-restricted"> (R)</span>}
+                  </span>
+                  <span className="skill-value">{val}</span>
+                </div>
+              </Tooltip>
             )
           })}
         </div>
@@ -154,14 +169,51 @@ export function CharacterSheet() {
         </div>
       </section>
 
+      {/* Occult */}
+      {((character.oculto?.psi ?? 0) > 0 || (character.oculto?.teurgia ?? 0) > 0) && (
+        <section className="sheet-section">
+          <h2>Oculto</h2>
+          <div className="derived-grid">
+            {(character.oculto?.psi ?? 0) > 0 && (
+              <>
+                <div className="derived-card">
+                  <div className="derived-label">Psi</div>
+                  <div className="derived-value">{character.oculto.psi}</div>
+                </div>
+                <div className="derived-card">
+                  <div className="derived-label">Ansia</div>
+                  <div className="derived-value">{character.oculto.ansia}</div>
+                </div>
+              </>
+            )}
+            {(character.oculto?.teurgia ?? 0) > 0 && (
+              <>
+                <div className="derived-card">
+                  <div className="derived-label">Teurgia</div>
+                  <div className="derived-value">{character.oculto.teurgia}</div>
+                </div>
+                <div className="derived-card">
+                  <div className="derived-label">Hubris</div>
+                  <div className="derived-value">{character.oculto.hubris}</div>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      )}
+
       {/* Benefits */}
       <section className="sheet-section">
         <h2>Beneficios</h2>
         <ol className="sheet-list">
           {character.beneficios.map((b, i) => (
             <li key={i}>
-              <strong>{b.nombre}</strong>
-              <span className="list-meta"> — {b.tipo} ({b.origen})</span>
+              <Tooltip text={BENEFIT_TOOLTIPS[b.nombre]}>
+                <span>
+                  <strong>{b.nombre}</strong>
+                  <span className="list-meta"> — {b.tipo} ({b.origen})</span>
+                </span>
+              </Tooltip>
             </li>
           ))}
         </ol>
@@ -173,8 +225,12 @@ export function CharacterSheet() {
         <ol className="sheet-list">
           {character.competencias.map((c, i) => (
             <li key={i}>
-              {c.nombre}
-              <span className="list-meta"> ({c.origen})</span>
+              <Tooltip text={COMPETENCY_TOOLTIPS[c.nombre]}>
+                <span>
+                  {c.nombre}
+                  <span className="list-meta"> ({c.origen})</span>
+                </span>
+              </Tooltip>
             </li>
           ))}
         </ol>
@@ -250,11 +306,30 @@ export function CharacterSheet() {
           border-bottom: 2px solid var(--color-accent);
           padding-bottom: var(--space-md);
         }
+        .sheet-header-top {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
         .sheet-back {
           font-size: 0.9rem;
           color: var(--color-text-muted);
         }
         .sheet-back:hover {
+          color: var(--color-accent);
+        }
+        .sheet-export-btn {
+          padding: var(--space-xs) var(--space-md);
+          background: transparent;
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-sm);
+          color: var(--color-text-muted);
+          font-size: 0.85rem;
+          cursor: pointer;
+          transition: border-color 0.15s, color 0.15s;
+        }
+        .sheet-export-btn:hover {
+          border-color: var(--color-accent);
           color: var(--color-accent);
         }
         .sheet-name {

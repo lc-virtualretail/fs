@@ -101,9 +101,73 @@ input:focus, textarea:focus, select:focus {
   padding-bottom: env(safe-area-inset-bottom, var(--space-md));
 }
 
+/* Tooltip */
+.tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  cursor: help;
+}
+.tooltip-wrapper > button {
+  cursor: pointer;
+}
+.tooltip-popup {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a2e;
+  color: var(--color-text);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  width: max-content;
+  max-width: 300px;
+  z-index: 1000;
+  pointer-events: none;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-body);
+  font-weight: normal;
+  text-align: left;
+  white-space: normal;
+}
+.tooltip-popup::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--color-accent);
+}
+.tooltip-wrapper:hover > .tooltip-popup,
+.tooltip-wrapper.tooltip-active > .tooltip-popup {
+  visibility: visible;
+  opacity: 1;
+}
+/* Flip tooltip below if near top edge */
+.tooltip-wrapper.tooltip-below > .tooltip-popup {
+  bottom: auto;
+  top: calc(100% + 6px);
+}
+.tooltip-wrapper.tooltip-below > .tooltip-popup::after {
+  top: auto;
+  bottom: 100%;
+  border-top-color: transparent;
+  border-bottom-color: var(--color-accent);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .app {
     padding: var(--space-sm);
+  }
+  .tooltip-popup {
+    max-width: 220px;
+    font-size: 0.75rem;
   }
 }

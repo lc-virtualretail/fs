@@ -23,7 +23,7 @@ export type SkillKey =
   | 'academia' | 'alquimia' | 'artes' | 'charlataneria' | 'conducir'
   | 'cuerpoACuerpo' | 'curar' | 'disfraz' | 'disparar' | 'empatia'
   | 'encanto' | 'impresionar' | 'interfaz' | 'introspeccion' | 'intrusion'
-  | 'pelea' | 'observar' | 'oficios' | 'pilotar' | 'prestidigitacion'
+  | 'pelear' | 'observar' | 'oficios' | 'pilotar' | 'prestidigitacion'
   | 'representar' | 'sigilo' | 'supervivencia' | 'tecnorredencion'
   | 'tratoConAnimales' | 'vigor'
 
@@ -60,7 +60,7 @@ export interface Skills {
   interfaz: number
   introspeccion: number
   intrusion: number
-  pelea: number
+  pelear: number
   observar: number
   oficios: number
   pilotar: number
@@ -278,7 +278,7 @@ export const DEFAULT_SKILLS: Skills = {
   interfaz: 0,    // Restricted
   introspeccion: 3,
   intrusion: 3,
-  pelea: 3,
+  pelear: 3,
   observar: 3,
   oficios: 3,
   pilotar: 0,     // Restricted

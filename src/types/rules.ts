@@ -15,6 +15,7 @@ export interface SpeciesDefinition {
     secundaria?: CharacteristicKey[]
   }
   maxCaracteristicas?: Partial<Record<CharacteristicKey, number>> // Species-specific max overrides
+  beneficiosEspecie?: string[] // Extra benefit options available when choosing vocation benefit
 }
 
 // ─── Class Definition ───
@@ -22,10 +23,14 @@ export interface SpeciesDefinition {
 export interface ClassEducation {
   competenciasFijas: string[]
   competenciasEleccion: string[][] // Each sub-array is a group to pick one from
+  competenciasLibres?: number // Number of free-text competency choices (e.g. Independiente gets 2)
   caracteristicas: CharacteristicBonus[]
   habilidades: SkillBonus[]
+  caracteristicasLibres?: number // Free characteristic points to distribute (e.g. Independiente gets 5)
+  habilidadesLibres?: number // Free skill points to distribute (e.g. Independiente gets 5)
   beneficioArquetipico: string
   beneficiosDeClase: string[]
+  beneficiosDeCualquierClase?: boolean // If true, can choose benefits from any class (Independiente)
 }
 
 export interface ClassDefinition {

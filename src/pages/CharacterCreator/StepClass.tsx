@@ -6,31 +6,69 @@ import type { CharacteristicKey, SkillKey } from '@/types/character'
 import type { CharacteristicBonus, SkillBonus } from '@/types/rules'
 import { CharacteristicsTable } from './components/CharacteristicsTable'
 import type { StepProps } from './creatorTypes'
+import { ALL_COMPETENCIES } from '@/data/competencies'
+import { getSubChoice, getDisplayLabel, resolveWithSub, filterAvailableCompetencies, filterSubChoiceOptions } from './competencyUtils'
+import { Tooltip } from '@/components/ui/Tooltip'
+import { COMPETENCY_TOOLTIPS, CHARACTERISTIC_TOOLTIPS, SKILL_TOOLTIPS, BENEFIT_TOOLTIPS } from '@/data/tooltips'
 
 export function StepClass({ draft, updateDraft, goNext, goBack }: StepProps) {
   const selectedClass = CLASSES.find(c => c.id === draft.clase)
 
   // Track choices for this step
   const [compChoices, setCompChoices] = useState<string[]>([]) // one per competenciasEleccion group
+  const [compSubChoices, setCompSubChoices] = useState<Record<number, string>>({}) // sub-choice per group
   const [charChoices, setCharChoices] = useState<Record<number, CharacteristicKey>>({})
   const [skillChoices, setSkillChoices] = useState<Record<number, SkillKey>>({})
+  const [freeCompChoices, setFreeCompChoices] = useState<string[]>([]) // free competency selections
+  const [freeCompSubChoices, setFreeCompSubChoices] = useState<Record<number, string>>({}) // sub-choices for free comps
   const [benefitChoice, setBenefitChoice] = useState<string>('')
-  const [preClassChars] = useState(draft.caracteristicas)
+  // Snapshot: species-only state (saved by StepSpecies). Stable base for backtracking.
+  const [baseSnapshot] = useState(() => draft._snapshotPreClase ?? {
+    caracteristicas: { ...draft.caracteristicas },
+    habilidades: { ...draft.habilidades },
+    competencias: [...draft.competencias],
+    beneficios: [...draft.beneficios],
+  })
+  const preClassChars = baseSnapshot.caracteristicas
+
+  // Free distribution state for Independiente
+  const [freeCharPoints, setFreeCharPoints] = useState<Record<CharacteristicKey, number>>({} as Record<CharacteristicKey, number>)
+  const [freeSkillPoints, setFreeSkillPoints] = useState<Record<SkillKey, number>>({} as Record<SkillKey, number>)
 
   // Reset choices when class changes
   useEffect(() => {
     setCompChoices([])
+    setCompSubChoices({})
+    setFreeCompChoices([])
+    setFreeCompSubChoices({})
     setCharChoices({})
     setSkillChoices({})
     setBenefitChoice('')
+    setFreeCharPoints({} as Record<CharacteristicKey, number>)
+    setFreeSkillPoints({} as Record<SkillKey, number>)
   }, [draft.clase])
 
   function selectClass(id: string) {
     updateDraft({ clase: id as typeof draft.clase })
   }
 
+  const hasFreeChars = (selectedClass?.educacion.caracteristicasLibres ?? 0) > 0
+  const hasFreeSkills = (selectedClass?.educacion.habilidadesLibres ?? 0) > 0
+  const totalFreeCharPoints = selectedClass?.educacion.caracteristicasLibres ?? 0
+  const totalFreeSkillPoints = selectedClass?.educacion.habilidadesLibres ?? 0
+
+  const usedFreeCharPoints = Object.values(freeCharPoints).reduce((sum, v) => sum + (v || 0), 0)
+  const usedFreeSkillPoints = Object.values(freeSkillPoints).reduce((sum, v) => sum + (v || 0), 0)
+  const remainingFreeCharPoints = totalFreeCharPoints - usedFreeCharPoints
+  const remainingFreeSkillPoints = totalFreeSkillPoints - usedFreeSkillPoints
+
   function resolveCharBonuses(): { key: CharacteristicKey; value: number }[] {
     if (!selectedClass) return []
+    if (hasFreeChars) {
+      return Object.entries(freeCharPoints)
+        .filter(([, v]) => v > 0)
+        .map(([key, value]) => ({ key: key as CharacteristicKey, value }))
+    }
     return selectedClass.educacion.caracteristicas.map((b, i) => {
       if (b.alternativas && b.alternativas.length > 0) {
         const chosen = charChoices[i]
@@ -42,6 +80,11 @@ export function StepClass({ draft, updateDraft, goNext, goBack }: StepProps) {
 
   function resolveSkillBonuses(): { key: SkillKey; value: number }[] {
     if (!selectedClass) return []
+    if (hasFreeSkills) {
+      return Object.entries(freeSkillPoints)
+        .filter(([, v]) => v > 0)
+        .map(([key, value]) => ({ key: key as SkillKey, value }))
+    }
     return selectedClass.educacion.habilidades.map((b, i) => {
       if (b.alternativas && b.alternativas.length > 0) {
         const chosen = skillChoices[i]
@@ -58,7 +101,7 @@ export function StepClass({ draft, updateDraft, goNext, goBack }: StepProps) {
       chars[b.key] += b.value
     }
 
-    const skills = { ...draft.habilidades }
+    const skills = { ...baseSnapshot.habilidades }
     for (const b of resolveSkillBonuses()) {
       skills[b.key] += b.value
     }
@@ -70,16 +113,17 @@ export function StepClass({ draft, updateDraft, goNext, goBack }: StepProps) {
     if (!selectedClass) return
     const { chars, skills } = computeNewStats()
 
-    // Build competencies list
+    // Build competencies list from snapshot base (not draft, which may have stale data from later steps)
     const newComps = [
-      ...draft.competencias,
+      ...baseSnapshot.competencias,
       ...selectedClass.educacion.competenciasFijas.map(c => ({ nombre: c, origen: 'Educación' })),
-      ...compChoices.filter(Boolean).map(c => ({ nombre: c, origen: 'Educación' })),
+      ...compChoices.filter(Boolean).map((c, i) => ({ nombre: resolveWithSub(c, compSubChoices[i]), origen: 'Educación' })),
+      ...freeCompChoices.filter(Boolean).map((c, i) => ({ nombre: resolveWithSub(c, freeCompSubChoices[i]), origen: 'Educación' })),
     ]
 
-    // Build benefits list
+    // Build benefits list from snapshot base
     const newBenefits = [
-      ...draft.beneficios,
+      ...baseSnapshot.beneficios,
       {
         nombre: selectedClass.educacion.beneficioArquetipico,
         tipo: 'Arquetípico',
@@ -101,28 +145,74 @@ export function StepClass({ draft, updateDraft, goNext, goBack }: StepProps) {
       habilidades: skills,
       competencias: newComps,
       beneficios: newBenefits,
+      // Save snapshot so StepFaction has a clean base for backtracking
+      _snapshotPreFaccion: {
+        caracteristicas: { ...chars },
+        habilidades: { ...skills },
+        competencias: [...newComps],
+        beneficios: [...newBenefits],
+      },
     })
     goNext()
   }
 
   // Check if all required choices are made
   const allCompChoicesMade = !selectedClass || (
-    selectedClass.educacion.competenciasEleccion.every((_, i) => compChoices[i])
+    selectedClass.educacion.competenciasEleccion.every((_, i) => {
+      const chosen = compChoices[i]
+      if (!chosen) return false
+      const sub = getSubChoice(chosen)
+      if (sub !== null) return !!compSubChoices[i]
+      return true
+    })
   )
   const allCharChoicesMade = !selectedClass || (
-    selectedClass.educacion.caracteristicas.every((b, i) =>
-      !b.alternativas || b.alternativas.length === 0 || charChoices[i]
-    )
+    hasFreeChars
+      ? remainingFreeCharPoints === 0
+      : selectedClass.educacion.caracteristicas.every((b, i) =>
+          !b.alternativas || b.alternativas.length === 0 || charChoices[i]
+        )
   )
   const allSkillChoicesMade = !selectedClass || (
-    selectedClass.educacion.habilidades.every((b, i) =>
-      !b.alternativas || b.alternativas.length === 0 || skillChoices[i]
-    )
+    hasFreeSkills
+      ? remainingFreeSkillPoints === 0
+      : selectedClass.educacion.habilidades.every((b, i) =>
+          !b.alternativas || b.alternativas.length === 0 || skillChoices[i]
+        )
   )
 
-  const canProceed = draft.clase !== '' && allCompChoicesMade && allCharChoicesMade && allSkillChoicesMade && benefitChoice !== ''
+  const numFreeComps = selectedClass?.educacion.competenciasLibres ?? 0
+  const allFreeCompsMade = numFreeComps === 0 || (
+    freeCompChoices.filter(Boolean).length >= numFreeComps &&
+    freeCompChoices.every((c, i) => {
+      if (!c) return true
+      const sub = getSubChoice(c)
+      if (sub !== null) return !!freeCompSubChoices[i]
+      return true
+    })
+  )
+
+  const canProceed = draft.clase !== '' && allCompChoicesMade && allFreeCompsMade && allCharChoicesMade && allSkillChoicesMade && benefitChoice !== ''
 
   const preview = draft.clase ? computeNewStats() : null
+
+  // Build combined benefit list for independiente (any class + free benefits)
+  const allBenefitOptions = (() => {
+    if (!selectedClass) return []
+    if (selectedClass.educacion.beneficiosDeCualquierClase) {
+      const allClassBenefits = new Set<string>()
+      for (const cls of CLASSES) {
+        for (const b of cls.educacion.beneficiosDeClase) {
+          if (b !== selectedClass.educacion.beneficioArquetipico) {
+            allClassBenefits.add(b)
+          }
+        }
+      }
+      return Array.from(allClassBenefits).sort()
+    }
+    return selectedClass.educacion.beneficiosDeClase
+      .filter(b => b !== selectedClass.educacion.beneficioArquetipico)
+  })()
 
   return (
     <div>
@@ -153,76 +243,223 @@ export function StepClass({ draft, updateDraft, goNext, goBack }: StepProps) {
           <div className="step-section">
             <h3>Competencias de Educación</h3>
             <div className="info-box" style={{ marginBottom: 'var(--space-sm)' }}>
-              <strong>Fijas:</strong> {selectedClass.educacion.competenciasFijas.join(', ')}
+              <strong>Fijas:</strong>{' '}
+              {selectedClass.educacion.competenciasFijas.map((c, i) => (
+                <span key={i}>
+                  {i > 0 && ', '}
+                  <Tooltip text={COMPETENCY_TOOLTIPS[c]}>{c}</Tooltip>
+                </span>
+              ))}
             </div>
             {selectedClass.educacion.competenciasEleccion.map((group, gi) => (
               <div className="choice-group" key={gi}>
                 <div className="choice-group-label">Elige una:</div>
                 <div className="choice-options">
                   {group.map(opt => (
-                    <button
-                      key={opt}
-                      className={`choice-btn ${compChoices[gi] === opt ? 'chosen' : ''}`}
-                      onClick={() => {
-                        const next = [...compChoices]
-                        next[gi] = opt
-                        setCompChoices(next)
-                      }}
-                    >
-                      {opt}
-                    </button>
+                    <Tooltip key={opt} text={COMPETENCY_TOOLTIPS[opt]}>
+                      <button
+                        className={`choice-btn ${compChoices[gi] === opt ? 'chosen' : ''}`}
+                        onClick={() => {
+                          const next = [...compChoices]
+                          next[gi] = opt
+                          setCompChoices(next)
+                          setCompSubChoices(prev => { const n = { ...prev }; delete n[gi]; return n })
+                        }}
+                      >
+                        {getDisplayLabel(opt)}
+                      </button>
+                    </Tooltip>
                   ))}
                 </div>
+                {/* Sub-choice when selected option requires further specification */}
+                {compChoices[gi] && (() => {
+                  const sub = getSubChoice(compChoices[gi])
+                  if (!sub) return null
+                  return (
+                    <div style={{ marginTop: 'var(--space-xs)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
+                      <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
+                        Especifica subcategoría:
+                      </div>
+                      {sub.type === 'buttons' ? (
+                        <div className="choice-options">
+                          {sub.options.map(o => (
+                            <Tooltip key={o} text={COMPETENCY_TOOLTIPS[`${compChoices[gi]} (${o})`] || COMPETENCY_TOOLTIPS[o]}>
+                              <button
+                                className={`choice-btn ${compSubChoices[gi] === o ? 'chosen' : ''}`}
+                                onClick={() => setCompSubChoices(prev => ({ ...prev, [gi]: o }))}
+                              >
+                                {o}
+                              </button>
+                            </Tooltip>
+                          ))}
+                        </div>
+                      ) : (
+                        <input
+                          type="text"
+                          placeholder={sub.placeholder}
+                          value={compSubChoices[gi] ?? ''}
+                          onChange={e => setCompSubChoices(prev => ({ ...prev, [gi]: e.target.value }))}
+                          style={{ width: '100%', maxWidth: 320 }}
+                        />
+                      )}
+                    </div>
+                  )
+                })()}
               </div>
             ))}
+            {/* Free competency dropdowns */}
+            {numFreeComps > 0 && (
+              <div className="choice-group">
+                <div className="choice-group-label">
+                  Elige {numFreeComps} competencia{numFreeComps > 1 ? 's' : ''} adicional{numFreeComps > 1 ? 'es' : ''} (trasfondo):
+                </div>
+                {Array.from({ length: numFreeComps }, (_, i) => {
+                  // Exclude competencies already picked in other slots or in fixed/choice comps
+                  const alreadyPicked = [
+                    ...selectedClass.educacion.competenciasFijas,
+                    ...compChoices.filter(Boolean).map((c, ci) => resolveWithSub(c, compSubChoices[ci])),
+                    ...freeCompChoices.filter((c, fi) => fi !== i && c).map((c, fi) => resolveWithSub(c, freeCompSubChoices[fi])),
+                  ]
+                  const available = filterAvailableCompetencies(
+                    ALL_COMPETENCIES.filter(c => !alreadyPicked.includes(c)),
+                    draft.clase, draft.faccion, draft.vocacion,
+                  )
+                  const sub = freeCompChoices[i] ? getSubChoice(freeCompChoices[i]) : null
+                  return (
+                    <div key={i} style={{ marginBottom: 'var(--space-sm)' }}>
+                      <select
+                        value={freeCompChoices[i] ?? ''}
+                        onChange={e => {
+                          const next = [...freeCompChoices]
+                          next[i] = e.target.value
+                          setFreeCompChoices(next)
+                          setFreeCompSubChoices(prev => { const n = { ...prev }; delete n[i]; return n })
+                        }}
+                        style={{ width: '100%', maxWidth: 320 }}
+                      >
+                        <option value="">— Selecciona competencia {i + 1} —</option>
+                        {available.map(c => (
+                          <option key={c} value={c}>{getDisplayLabel(c)}</option>
+                        ))}
+                      </select>
+                      {sub && (() => {
+                        const filteredOpts = sub.type === 'buttons'
+                          ? filterSubChoiceOptions(freeCompChoices[i] ?? '', sub.options, draft.clase, draft.faccion, draft.vocacion)
+                          : null
+                        return (
+                          <div style={{ marginTop: 'var(--space-xs)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
+                            <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
+                              Especifica subcategoría:
+                            </div>
+                            {filteredOpts ? (
+                              <div className="choice-options">
+                                {filteredOpts.map(o => (
+                                  <Tooltip key={o} text={COMPETENCY_TOOLTIPS[`${freeCompChoices[i]} (${o})`] || COMPETENCY_TOOLTIPS[o]}>
+                                    <button
+                                      className={`choice-btn ${freeCompSubChoices[i] === o ? 'chosen' : ''}`}
+                                      onClick={() => setFreeCompSubChoices(prev => ({ ...prev, [i]: o }))}
+                                    >
+                                      {o}
+                                    </button>
+                                  </Tooltip>
+                                ))}
+                              </div>
+                            ) : (
+                              <input
+                                type="text"
+                                placeholder={(sub as { placeholder: string }).placeholder}
+                                value={freeCompSubChoices[i] ?? ''}
+                                onChange={e => setFreeCompSubChoices(prev => ({ ...prev, [i]: e.target.value }))}
+                                style={{ width: '100%', maxWidth: 320 }}
+                              />
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Characteristic bonuses */}
           <div className="step-section">
             <h3>Bonificaciones de Características</h3>
-            {selectedClass.educacion.caracteristicas.map((bonus, i) => (
-              <CharBonusRow
-                key={i}
-                bonus={bonus}
-                chosen={charChoices[i]}
-                onChoose={(key) => setCharChoices(prev => ({ ...prev, [i]: key }))}
+            {hasFreeChars ? (
+              <FreePointDistribution
+                type="characteristic"
+                totalPoints={totalFreeCharPoints}
+                remaining={remainingFreeCharPoints}
+                distribution={freeCharPoints}
+                baseValues={preClassChars as unknown as Record<string, number>}
+                maxValue={8}
+                onChange={setFreeCharPoints as (d: Record<string, number>) => void}
               />
-            ))}
+            ) : (
+              selectedClass.educacion.caracteristicas.map((bonus, i) => (
+                <CharBonusRow
+                  key={i}
+                  bonus={bonus}
+                  chosen={charChoices[i]}
+                  onChoose={(key) => setCharChoices(prev => ({ ...prev, [i]: key }))}
+                />
+              ))
+            )}
           </div>
 
           {/* Skill bonuses */}
           <div className="step-section">
             <h3>Bonificaciones de Habilidades</h3>
-            {selectedClass.educacion.habilidades.map((bonus, i) => (
-              <SkillBonusRow
-                key={i}
-                bonus={bonus}
-                chosen={skillChoices[i]}
-                onChoose={(key) => setSkillChoices(prev => ({ ...prev, [i]: key }))}
+            {hasFreeSkills ? (
+              <FreePointDistribution
+                type="skill"
+                totalPoints={totalFreeSkillPoints}
+                remaining={remainingFreeSkillPoints}
+                distribution={freeSkillPoints}
+                baseValues={draft.habilidades as unknown as Record<string, number>}
+                maxValue={8}
+                onChange={setFreeSkillPoints as (d: Record<string, number>) => void}
               />
-            ))}
+            ) : (
+              selectedClass.educacion.habilidades.map((bonus, i) => (
+                <SkillBonusRow
+                  key={i}
+                  bonus={bonus}
+                  chosen={skillChoices[i]}
+                  onChoose={(key) => setSkillChoices(prev => ({ ...prev, [i]: key }))}
+                />
+              ))
+            )}
           </div>
 
           {/* Benefit choice */}
           <div className="step-section">
             <h3>Beneficios</h3>
             <div className="info-box" style={{ marginBottom: 'var(--space-sm)' }}>
-              <strong>Automático:</strong> {selectedClass.educacion.beneficioArquetipico} (arquetípico)
+              <strong>Automático:</strong>{' '}
+              <Tooltip text={BENEFIT_TOOLTIPS[selectedClass.educacion.beneficioArquetipico]}>
+                {selectedClass.educacion.beneficioArquetipico}
+              </Tooltip>{' '}
+              (arquetípico)
             </div>
             <div className="choice-group">
-              <div className="choice-group-label">Elige 1 beneficio de clase:</div>
+              <div className="choice-group-label">
+                {selectedClass.educacion.beneficiosDeCualquierClase
+                  ? 'Elige 1 beneficio (de cualquier clase o beneficios libres):'
+                  : 'Elige 1 beneficio de clase:'}
+              </div>
               <div className="choice-options">
-                {selectedClass.educacion.beneficiosDeClase
-                  .filter(b => b !== selectedClass.educacion.beneficioArquetipico)
-                  .map(b => (
+                {allBenefitOptions.map(b => (
+                  <Tooltip key={b} text={BENEFIT_TOOLTIPS[b]}>
                     <button
-                      key={b}
                       className={`choice-btn ${benefitChoice === b ? 'chosen' : ''}`}
                       onClick={() => setBenefitChoice(b)}
                     >
                       {b}
                     </button>
-                  ))}
+                  </Tooltip>
+                ))}
               </div>
             </div>
           </div>
@@ -251,6 +488,81 @@ export function StepClass({ draft, updateDraft, goNext, goBack }: StepProps) {
   )
 }
 
+// ─── Free Point Distribution Component ───
+
+function FreePointDistribution({ type, totalPoints, remaining, distribution, baseValues, maxValue, onChange }: {
+  type: 'characteristic' | 'skill'
+  totalPoints: number
+  remaining: number
+  distribution: Record<string, number>
+  baseValues: Record<string, number>
+  maxValue: number
+  onChange: (d: Record<string, number>) => void
+}) {
+  const items: { key: string; nombre: string }[] = type === 'characteristic'
+    ? CHARACTERISTICS.map(c => ({ key: c.key, nombre: c.nombre }))
+    : SKILLS.map(s => ({ key: s.key, nombre: s.nombre }))
+  const tooltips = type === 'characteristic' ? CHARACTERISTIC_TOOLTIPS : SKILL_TOOLTIPS
+
+  function adjust(key: string, delta: number) {
+    const current = distribution[key] || 0
+    const newVal = current + delta
+    if (newVal < 0) return
+    if (delta > 0 && remaining <= 0) return
+    // Check max: base + bonus <= maxValue
+    if (delta > 0 && (baseValues[key] || 0) + newVal > maxValue) return
+    onChange({ ...distribution, [key]: newVal })
+  }
+
+  return (
+    <div>
+      <div className="info-box" style={{ marginBottom: 'var(--space-sm)' }}>
+        Distribuye {totalPoints} puntos libremente.
+        Puntos restantes: <strong style={{ color: remaining > 0 ? 'var(--color-accent)' : 'var(--color-text-muted)' }}>{remaining}</strong>
+        {' '}(máximo por {type === 'characteristic' ? 'característica' : 'habilidad'}: {maxValue})
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 'var(--space-xs)' }}>
+        {items.map(item => {
+          const added = distribution[item.key] || 0
+          const base = baseValues[item.key] || 0
+          const atMax = base + added >= maxValue
+          return (
+            <Tooltip key={item.key} text={tooltips[item.key]}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 'var(--space-xs)',
+                padding: '4px 8px', borderRadius: 4,
+                background: added > 0 ? 'rgba(var(--accent-rgb, 139,92,246), 0.15)' : 'transparent',
+              }}>
+                <button
+                  className="choice-btn"
+                  style={{ padding: '2px 8px', fontSize: '0.8rem', minWidth: 28 }}
+                  disabled={added === 0}
+                  onClick={() => adjust(item.key, -1)}
+                >−</button>
+                <button
+                  className="choice-btn"
+                  style={{ padding: '2px 8px', fontSize: '0.8rem', minWidth: 28 }}
+                  disabled={remaining <= 0 || atMax}
+                  onClick={() => adjust(item.key, 1)}
+                >+</button>
+                <span style={{ flex: 1, fontSize: '0.85rem' }}>
+                  {item.nombre}
+                  {added > 0 && <span style={{ color: 'var(--color-accent)', marginLeft: 4 }}>+{added}</span>}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)', minWidth: 24, textAlign: 'center' }}>
+                  {base + added}
+                </span>
+              </div>
+            </Tooltip>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+// ─── Fixed Bonus Row Components ───
+
 function CharBonusRow({ bonus, chosen, onChoose }: {
   bonus: CharacteristicBonus
   chosen: CharacteristicKey | undefined
@@ -261,7 +573,9 @@ function CharBonusRow({ bonus, chosen, onChoose }: {
   if (!bonus.alternativas || bonus.alternativas.length === 0) {
     return (
       <div className="info-box" style={{ marginBottom: 'var(--space-sm)' }}>
-        {meta?.nombre} +{bonus.valor} (fijo)
+        <Tooltip text={CHARACTERISTIC_TOOLTIPS[bonus.caracteristica]}>
+          {meta?.nombre} +{bonus.valor} (fijo)
+        </Tooltip>
       </div>
     )
   }
@@ -274,13 +588,14 @@ function CharBonusRow({ bonus, chosen, onChoose }: {
         {options.map(key => {
           const m = CHARACTERISTICS.find(c => c.key === key)
           return (
-            <button
-              key={key}
-              className={`choice-btn ${chosen === key ? 'chosen' : ''}`}
-              onClick={() => onChoose(key)}
-            >
-              {m?.nombre} ({m?.abreviatura})
-            </button>
+            <Tooltip key={key} text={CHARACTERISTIC_TOOLTIPS[key]}>
+              <button
+                className={`choice-btn ${chosen === key ? 'chosen' : ''}`}
+                onClick={() => onChoose(key)}
+              >
+                {m?.nombre} ({m?.abreviatura})
+              </button>
+            </Tooltip>
           )
         })}
       </div>
@@ -298,7 +613,9 @@ function SkillBonusRow({ bonus, chosen, onChoose }: {
   if (!bonus.alternativas || bonus.alternativas.length === 0) {
     return (
       <div className="info-box" style={{ marginBottom: 'var(--space-sm)' }}>
-        {meta?.nombre} +{bonus.valor} (fijo)
+        <Tooltip text={SKILL_TOOLTIPS[bonus.habilidad]}>
+          {meta?.nombre} +{bonus.valor} (fijo)
+        </Tooltip>
       </div>
     )
   }
@@ -311,13 +628,14 @@ function SkillBonusRow({ bonus, chosen, onChoose }: {
         {options.map(key => {
           const m = SKILLS.find(s => s.key === key)
           return (
-            <button
-              key={key}
-              className={`choice-btn ${chosen === key ? 'chosen' : ''}`}
-              onClick={() => onChoose(key)}
-            >
-              {m?.nombre}
-            </button>
+            <Tooltip key={key} text={SKILL_TOOLTIPS[key]}>
+              <button
+                className={`choice-btn ${chosen === key ? 'chosen' : ''}`}
+                onClick={() => onChoose(key)}
+              >
+                {m?.nombre}
+              </button>
+            </Tooltip>
           )
         })}
       </div>

@@ -23,6 +23,7 @@ export const SPECIES: SpeciesDefinition[] = [
       'Hablar (lojmaa): Lengua materna como competencia.',
     ],
     restricciones: [],
+    beneficiosEspecie: ['Descendiente de Dhiyana', 'Condicionamiento Mental', 'Memoria Oral'],
     maxCaracteristicas: {
       inteligencia: 11,
       voluntad: 11,
@@ -41,6 +42,7 @@ export const SPECIES: SpeciesDefinition[] = [
       'Hablar (uryari): Lengua materna como competencia.',
     ],
     restricciones: [],
+    beneficiosEspecie: ['Nada que Perder', 'Furia Acumulada'],
   },
   {
     id: 'vorox',
@@ -61,6 +63,7 @@ export const SPECIES: SpeciesDefinition[] = [
     restricciones: [
       'Sin poderes ocultos: No puedes tener vocación de psíquico ni teúrgo.',
     ],
+    beneficiosEspecie: ['Oler el Peligro'],
     caracteristicasForzadas: {
       primaria: ['fuerza', 'constitucion'], // Must choose one of these
     },

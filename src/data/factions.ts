@@ -23,7 +23,7 @@ export const FACTIONS: FactionDefinition[] = [
     aprendizaje: {
       competenciasFijas: ['Hablar (lengua elegante)', 'Saber de Facción (al-Malik)'],
       competenciasEleccion: [
-        ['Máquinas Pensantes', 'Usos del Vulgo', 'Armas de Balas', 'Armas de Energía', 'Armas Militares', 'Saber Artístico', 'Artes Escénicas'],
+        ['Máquinas Pensantes', 'Usos del Vulgo', 'Armas a Distancia', 'Armas Militares', 'Saber Artístico', 'Artes Escénicas'],
       ],
       caracteristicas: [
         { caracteristica: 'destreza', valor: 1, alternativas: ['inteligencia'] },
@@ -60,7 +60,7 @@ export const FACTIONS: FactionDefinition[] = [
       competenciasFijas: ['Saber de Facción (Decados)'],
       competenciasEleccion: [
         ['Saber Artístico', 'Tortura', 'Venenos'],
-        ['Armas de Balas', 'Armas de Energía', 'Armas Militares'],
+        ['Armas a Distancia', 'Armas Militares'],
       ],
       caracteristicas: [
         { caracteristica: 'constitucion', valor: 1, alternativas: ['destreza', 'fuerza'] },
@@ -96,7 +96,7 @@ export const FACTIONS: FactionDefinition[] = [
     aprendizaje: {
       competenciasFijas: ['Saber de Facción (Hawkwood)'],
       competenciasEleccion: [
-        ['Armas Militares', 'Armas de Balas', 'Armas de Energía'],
+        ['Armas Militares', 'Armas a Distancia'],
         ['Monta', 'Operaciones a Bordo', 'Saber Marcial'],
       ],
       caracteristicas: [
@@ -131,7 +131,7 @@ export const FACTIONS: FactionDefinition[] = [
     aprendizaje: {
       competenciasFijas: ['Saber de Facción (Hazat)', 'Saber Marcial'],
       competenciasEleccion: [
-        ['Armas de Balas', 'Armas de Energía', 'Armadura de Combate', 'Saber (cualquiera)'],
+        ['Armas a Distancia', 'Armadura de Combate', 'Saber (cualquiera)'],
       ],
       caracteristicas: [
         { caracteristica: 'destreza', valor: 2, alternativas: ['fuerza'] },
@@ -143,7 +143,7 @@ export const FACTIONS: FactionDefinition[] = [
         { habilidad: 'cuerpoACuerpo', valor: 1 },
         { habilidad: 'empatia', valor: 1, alternativas: ['vigor'] },
         { habilidad: 'encanto', valor: 1, alternativas: ['impresionar'] },
-        { habilidad: 'disparar', valor: 1, alternativas: ['pelea'] },
+        { habilidad: 'disparar', valor: 1, alternativas: ['pelear'] },
       ],
       beneficio: 'Título Nobiliario (caballero)',
     },
@@ -166,7 +166,7 @@ export const FACTIONS: FactionDefinition[] = [
     aprendizaje: {
       competenciasFijas: ['Usos de la Catedral', 'Saber de Facción (Li Halan)'],
       competenciasEleccion: [
-        ['Saber Religioso', 'Armas de Balas', 'Armas de Energía', 'Armas Militares', 'Artes Escénicas', 'Saber Artístico'],
+        ['Saber Religioso', 'Armas a Distancia', 'Armas Militares', 'Artes Escénicas', 'Saber Artístico'],
       ],
       caracteristicas: [
         { caracteristica: 'constitucion', valor: 1, alternativas: ['destreza', 'fuerza'] },
@@ -205,7 +205,7 @@ export const FACTIONS: FactionDefinition[] = [
     aprendizaje: {
       competenciasFijas: ['Armas Militares', 'Saber de Facción (Hermanos de Batalla)'],
       competenciasEleccion: [
-        ['Armadura de Combate', 'Armadura de Guerra', 'Armas de Balas', 'Armas de Energía'],
+        ['Armadura de Combate', 'Armadura de Guerra', 'Armas a Distancia'],
       ],
       caracteristicas: [
         { caracteristica: 'destreza', valor: 1 },
@@ -217,7 +217,7 @@ export const FACTIONS: FactionDefinition[] = [
         { habilidad: 'cuerpoACuerpo', valor: 1, alternativas: ['disparar'] },
         { habilidad: 'curar', valor: 1 },
         { habilidad: 'impresionar', valor: 1, alternativas: ['introspeccion', 'supervivencia'] },
-        { habilidad: 'pelea', valor: 1 },
+        { habilidad: 'pelear', valor: 1 },
         { habilidad: 'vigor', valor: 1 },
       ],
       beneficio: 'Ordenación Religiosa (aprendiz)',
@@ -345,7 +345,7 @@ export const FACTIONS: FactionDefinition[] = [
     aprendizaje: {
       competenciasFijas: ['Saber de Facción (templo Avesti)', 'Tortura'],
       competenciasEleccion: [
-        ['Saber (cualquiera)', 'Armas de Balas', 'Armas de Energía'],
+        ['Saber (cualquiera)', 'Armas a Distancia'],
       ],
       caracteristicas: [
         { caracteristica: 'constitucion', valor: 1 },
@@ -354,7 +354,7 @@ export const FACTIONS: FactionDefinition[] = [
         { caracteristica: 'percepcion', valor: 2 },
       ],
       habilidades: [
-        { habilidad: 'cuerpoACuerpo', valor: 1, alternativas: ['disparar', 'pelea'] },
+        { habilidad: 'cuerpoACuerpo', valor: 1, alternativas: ['disparar', 'pelear'] },
         { habilidad: 'empatia', valor: 1, alternativas: ['charlataneria'] },
         { habilidad: 'impresionar', valor: 1 },
         { habilidad: 'introspeccion', valor: 1, alternativas: ['vigor'] },
@@ -421,7 +421,7 @@ export const FACTIONS: FactionDefinition[] = [
     aprendizaje: {
       competenciasFijas: ['Saber de Facción (Carroñeros)', 'Bajos Fondos'],
       competenciasEleccion: [
-        ['Armas de Balas', 'Armas de Energía', 'Transporte (cualquiera)', 'Saber Tecnológico'],
+        ['Armas a Distancia', 'Transporte (cualquiera)', 'Saber Tecnológico'],
       ],
       caracteristicas: [
         { caracteristica: 'destreza', valor: 1, alternativas: ['fuerza'] },
@@ -432,7 +432,7 @@ export const FACTIONS: FactionDefinition[] = [
       habilidades: [
         { habilidad: 'charlataneria', valor: 1, alternativas: ['encanto', 'impresionar'] },
         { habilidad: 'conducir', valor: 1, alternativas: ['pilotar'] },
-        { habilidad: 'cuerpoACuerpo', valor: 1, alternativas: ['disparar', 'pelea'] },
+        { habilidad: 'cuerpoACuerpo', valor: 1, alternativas: ['disparar', 'pelear'] },
         { habilidad: 'intrusion', valor: 1, alternativas: ['observar'] },
         { habilidad: 'prestidigitacion', valor: 1, alternativas: ['tecnorredencion'] },
       ],
@@ -537,7 +537,7 @@ export const FACTIONS: FactionDefinition[] = [
       ],
       habilidades: [
         { habilidad: 'conducir', valor: 1, alternativas: ['pilotar'] },
-        { habilidad: 'cuerpoACuerpo', valor: 1, alternativas: ['pelea'] },
+        { habilidad: 'cuerpoACuerpo', valor: 1, alternativas: ['pelear'] },
         { habilidad: 'disparar', valor: 1 },
         { habilidad: 'impresionar', valor: 1 },
         { habilidad: 'tecnorredencion', valor: 1, alternativas: ['vigor'] },
@@ -580,7 +580,7 @@ export const FACTIONS: FactionDefinition[] = [
         { habilidad: 'cuerpoACuerpo', valor: 1 },
         { habilidad: 'disparar', valor: 1 },
         { habilidad: 'impresionar', valor: 1 },
-        { habilidad: 'pelea', valor: 1 },
+        { habilidad: 'pelear', valor: 1 },
       ],
       beneficio: 'Reputación Profesional (novato)',
     },
@@ -614,7 +614,7 @@ export const FACTIONS: FactionDefinition[] = [
         { habilidad: 'academia', valor: 1 },
         { habilidad: 'encanto', valor: 1, alternativas: ['impresionar'] },
         { habilidad: 'empatia', valor: 1, alternativas: ['sigilo'] },
-        { habilidad: 'pelea', valor: 1, alternativas: ['disparar', 'supervivencia'] },
+        { habilidad: 'pelear', valor: 1, alternativas: ['disparar', 'supervivencia'] },
         { habilidad: 'charlataneria', valor: 1, alternativas: ['observar'] },
       ],
       beneficio: 'Reputación Profesional (novato)',
@@ -680,7 +680,7 @@ export const FACTIONS: FactionDefinition[] = [
       ],
       habilidades: [
         { habilidad: 'charlataneria', valor: 1 },
-        { habilidad: 'cuerpoACuerpo', valor: 1, alternativas: ['pelea'] },
+        { habilidad: 'cuerpoACuerpo', valor: 1, alternativas: ['pelear'] },
         { habilidad: 'encanto', valor: 1, alternativas: ['impresionar'] },
         { habilidad: 'observar', valor: 1, alternativas: ['prestidigitacion'] },
         { habilidad: 'sigilo', valor: 1, alternativas: ['supervivencia', 'vigor'] },
@@ -717,7 +717,7 @@ export const FACTIONS: FactionDefinition[] = [
       ],
       habilidades: [
         { habilidad: 'conducir', valor: 1, alternativas: ['pilotar'] },
-        { habilidad: 'cuerpoACuerpo', valor: 1, alternativas: ['disparar', 'pelea'] },
+        { habilidad: 'cuerpoACuerpo', valor: 1, alternativas: ['disparar', 'pelear'] },
         { habilidad: 'encanto', valor: 1, alternativas: ['impresionar', 'tratoConAnimales'] },
         { habilidad: 'oficios', valor: 1, alternativas: ['tecnorredencion'] },
         { habilidad: 'supervivencia', valor: 1, alternativas: ['vigor'] },

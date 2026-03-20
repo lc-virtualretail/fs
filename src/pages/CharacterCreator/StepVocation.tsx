@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react'
 import { VOCATIONS } from '@/data/vocations'
 import { FACTIONS } from '@/data/factions'
+import { SPECIES } from '@/data/species'
 import { CHARACTERISTICS } from '@/data/characteristics'
 import { SKILLS } from '@/data/skills'
-import type { CharacteristicKey, SkillKey } from '@/types/character'
+import type { SkillKey } from '@/types/character'
 import type { SkillBonus } from '@/types/rules'
-import { getMaxStatValue } from '@/engine/derived'
 import { CharacteristicsTable } from './components/CharacteristicsTable'
 import type { StepProps } from './creatorTypes'
 import { getSubChoice, getDisplayLabel, resolveWithSub } from './competencyUtils'
+import { Tooltip } from '@/components/ui/Tooltip'
+import { COMPETENCY_TOOLTIPS, CHARACTERISTIC_TOOLTIPS, SKILL_TOOLTIPS, BENEFIT_TOOLTIPS } from '@/data/tooltips'
 
 export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) {
   // Get vocations for this class + free vocations
@@ -28,7 +30,14 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
   const [compSubChoices, setCompSubChoices] = useState<Record<number, string>>({})
   const [skillChoices, setSkillChoices] = useState<Record<number, SkillKey>>({})
   const [benefitChoice, setBenefitChoice] = useState('')
-  const [preStepChars] = useState(draft.caracteristicas)
+  // Snapshot: species+class+faction state (saved by StepFaction). Stable base for backtracking.
+  const [baseSnapshot] = useState(() => draft._snapshotPreVocacion ?? {
+    caracteristicas: { ...draft.caracteristicas },
+    habilidades: { ...draft.habilidades },
+    competencias: [...draft.competencias],
+    beneficios: [...draft.beneficios],
+  })
+  const preStepChars = baseSnapshot.caracteristicas
 
   useEffect(() => {
     if (!selectedVocation) {
@@ -70,12 +79,12 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
   function computeNewStats() {
     if (!selectedVocation) return null
 
-    const chars = { ...draft.caracteristicas }
+    const chars = { ...baseSnapshot.caracteristicas }
     for (const b of selectedVocation.carrera.caracteristicas) {
       chars[b.caracteristica] += b.valor
     }
 
-    const skills = { ...draft.habilidades }
+    const skills = { ...baseSnapshot.habilidades }
     for (const b of resolveSkillBonuses()) {
       skills[b.key] += b.value
     }
@@ -88,27 +97,18 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
     const result = computeNewStats()
     if (!result) return
 
-    const maxVal = getMaxStatValue(1)
-
-    // Cap excess
     const chars = { ...result.chars }
-    for (const key of Object.keys(chars) as CharacteristicKey[]) {
-      if (chars[key] > maxVal) chars[key] = maxVal
-    }
     const skills = { ...result.skills }
-    for (const key of Object.keys(skills) as SkillKey[]) {
-      if (skills[key] > maxVal) skills[key] = maxVal
-    }
 
     const newComps = [
-      ...draft.competencias,
+      ...baseSnapshot.competencias,
       ...selectedVocation.carrera.competencias.map((_, i) => ({
         nombre: resolveCompName(i),
         origen: 'Vocación',
       })).filter(c => c.nombre),
     ]
 
-    const newBenefits = [...draft.beneficios]
+    const newBenefits = [...baseSnapshot.beneficios]
     if (benefitChoice) {
       newBenefits.push({
         nombre: benefitChoice,
@@ -124,6 +124,13 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
       competencias: newComps,
       beneficios: newBenefits,
       equipoVocacion: selectedVocation.carrera.equipo,
+      // Save snapshot so StepCustomization has a clean base for backtracking
+      _snapshotPreCustomization: {
+        caracteristicas: { ...chars },
+        habilidades: { ...skills },
+        competencias: [...newComps],
+        beneficios: [...newBenefits],
+      },
     })
     goNext()
   }
@@ -195,16 +202,17 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
                 </div>
                 <div className="choice-options">
                   {slot.map(option => (
-                    <button
-                      key={option}
-                      className={`choice-btn ${compChoices[slotIdx] === option ? 'chosen' : ''}`}
-                      onClick={() => {
-                        setCompChoices(prev => ({ ...prev, [slotIdx]: option }))
-                        setCompSubChoices(prev => { const next = { ...prev }; delete next[slotIdx]; return next })
-                      }}
-                    >
-                      {getDisplayLabel(option)}
-                    </button>
+                    <Tooltip key={option} text={COMPETENCY_TOOLTIPS[option]}>
+                      <button
+                        className={`choice-btn ${compChoices[slotIdx] === option ? 'chosen' : ''}`}
+                        onClick={() => {
+                          setCompChoices(prev => ({ ...prev, [slotIdx]: option }))
+                          setCompSubChoices(prev => { const next = { ...prev }; delete next[slotIdx]; return next })
+                        }}
+                      >
+                        {getDisplayLabel(option)}
+                      </button>
+                    </Tooltip>
                   ))}
                 </div>
                 {/* Sub-choice when selected option requires further specification */}
@@ -219,13 +227,14 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
                       {sub.type === 'buttons' ? (
                         <div className="choice-options">
                           {sub.options.map(opt => (
-                            <button
-                              key={opt}
-                              className={`choice-btn ${compSubChoices[slotIdx] === opt ? 'chosen' : ''}`}
-                              onClick={() => setCompSubChoices(prev => ({ ...prev, [slotIdx]: opt }))}
-                            >
-                              {opt}
-                            </button>
+                            <Tooltip key={opt} text={COMPETENCY_TOOLTIPS[`${compChoices[slotIdx]} (${opt})`] || COMPETENCY_TOOLTIPS[opt]}>
+                              <button
+                                className={`choice-btn ${compSubChoices[slotIdx] === opt ? 'chosen' : ''}`}
+                                onClick={() => setCompSubChoices(prev => ({ ...prev, [slotIdx]: opt }))}
+                              >
+                                {opt}
+                              </button>
+                            </Tooltip>
                           ))}
                         </div>
                       ) : (
@@ -251,10 +260,17 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
           <div className="step-section">
             <h3>Bonificaciones de Características</h3>
             <div className="info-box">
-              {selectedVocation.carrera.caracteristicas.map(b => {
+              {selectedVocation.carrera.caracteristicas.map((b, i) => {
                 const meta = CHARACTERISTICS.find(c => c.key === b.caracteristica)
-                return `${meta?.nombre} +${b.valor}`
-              }).join(', ')}
+                return (
+                  <span key={i}>
+                    {i > 0 && ', '}
+                    <Tooltip text={CHARACTERISTIC_TOOLTIPS[b.caracteristica]}>
+                      {meta?.nombre} +{b.valor}
+                    </Tooltip>
+                  </span>
+                )
+              })}
             </div>
           </div>
 
@@ -272,23 +288,52 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
           </div>
 
           {/* Benefit choice */}
-          <div className="step-section">
-            <h3>Beneficio de Vocación</h3>
-            <div className="choice-group">
-              <div className="choice-group-label">Elige 1 beneficio:</div>
-              <div className="choice-options">
-                {selectedVocation.carrera.beneficios.map(b => (
-                  <button
-                    key={b}
-                    className={`choice-btn ${benefitChoice === b ? 'chosen' : ''}`}
-                    onClick={() => setBenefitChoice(b)}
-                  >
-                    {b}
-                  </button>
-                ))}
+          {(() => {
+            const speciesData = SPECIES.find(s => s.id === draft.especie)
+            const speciesBenefits = speciesData?.beneficiosEspecie ?? []
+            const vocationBenefits = selectedVocation.carrera.beneficios
+            // Deduplicate: species benefits that are already in vocation list
+            const extraSpeciesBenefits = speciesBenefits.filter(b => !vocationBenefits.includes(b))
+            return (
+              <div className="step-section">
+                <h3>Beneficio de Vocación</h3>
+                <div className="choice-group">
+                  <div className="choice-group-label">Elige 1 beneficio:</div>
+                  <div className="choice-options">
+                    {vocationBenefits.map(b => (
+                      <Tooltip key={b} text={BENEFIT_TOOLTIPS[b]}>
+                        <button
+                          className={`choice-btn ${benefitChoice === b ? 'chosen' : ''}`}
+                          onClick={() => setBenefitChoice(b)}
+                        >
+                          {b}
+                        </button>
+                      </Tooltip>
+                    ))}
+                  </div>
+                  {extraSpeciesBenefits.length > 0 && (
+                    <>
+                      <div className="choice-group-label" style={{ marginTop: 'var(--space-sm)' }}>
+                        Beneficios de especie ({speciesData!.nombre}):
+                      </div>
+                      <div className="choice-options">
+                        {extraSpeciesBenefits.map(b => (
+                          <Tooltip key={b} text={BENEFIT_TOOLTIPS[b]}>
+                            <button
+                              className={`choice-btn ${benefitChoice === b ? 'chosen' : ''}`}
+                              onClick={() => setBenefitChoice(b)}
+                            >
+                              {b}
+                            </button>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
+            )
+          })()}
 
           {/* Equipment */}
           <div className="step-section">
@@ -332,7 +377,9 @@ function SkillBonusRow({ bonus, chosen, onChoose }: {
   if (!bonus.alternativas || bonus.alternativas.length === 0) {
     return (
       <div className="info-box" style={{ marginBottom: 'var(--space-sm)' }}>
-        {meta?.nombre} +{bonus.valor} (fijo)
+        <Tooltip text={SKILL_TOOLTIPS[bonus.habilidad]}>
+          {meta?.nombre} +{bonus.valor} (fijo)
+        </Tooltip>
       </div>
     )
   }
@@ -345,13 +392,14 @@ function SkillBonusRow({ bonus, chosen, onChoose }: {
         {options.map(key => {
           const m = SKILLS.find(s => s.key === key)
           return (
-            <button
-              key={key}
-              className={`choice-btn ${chosen === key ? 'chosen' : ''}`}
-              onClick={() => onChoose(key)}
-            >
-              {m?.nombre}
-            </button>
+            <Tooltip key={key} text={SKILL_TOOLTIPS[key]}>
+              <button
+                className={`choice-btn ${chosen === key ? 'chosen' : ''}`}
+                onClick={() => onChoose(key)}
+              >
+                {m?.nombre}
+              </button>
+            </Tooltip>
           )
         })}
       </div>

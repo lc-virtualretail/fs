@@ -3,10 +3,11 @@ import { FACTIONS } from '@/data/factions'
 import { CHARACTERISTICS } from '@/data/characteristics'
 import { SKILLS } from '@/data/skills'
 import type { CharacteristicKey, SkillKey } from '@/types/character'
-import { getMaxStatValue } from '@/engine/derived'
 import { CharacteristicsTable } from './components/CharacteristicsTable'
 import type { StepProps } from './creatorTypes'
 import { getSubChoice, getDisplayLabel, resolveWithSub } from './competencyUtils'
+import { Tooltip } from '@/components/ui/Tooltip'
+import { COMPETENCY_TOOLTIPS, CHARACTERISTIC_TOOLTIPS, SKILL_TOOLTIPS, BENEFIT_TOOLTIPS } from '@/data/tooltips'
 
 export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
   const availableFactions = FACTIONS.filter(f => f.clase === draft.clase)
@@ -21,7 +22,14 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
   const [charChoices, setCharChoices] = useState<Record<number, CharacteristicKey>>({})
   const [skillChoices, setSkillChoices] = useState<Record<number, SkillKey>>({})
 
-  const [preStepChars] = useState(draft.caracteristicas)
+  // Snapshot: species+class state (saved by StepClass). Stable base for backtracking.
+  const [baseSnapshot] = useState(() => draft._snapshotPreFaccion ?? {
+    caracteristicas: { ...draft.caracteristicas },
+    habilidades: { ...draft.habilidades },
+    competencias: [...draft.competencias],
+    beneficios: [...draft.beneficios],
+  })
+  const preStepChars = baseSnapshot.caracteristicas
 
   useEffect(() => {
     setCompGroupChoices([])
@@ -47,11 +55,11 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
 
   function computeNewStats() {
     if (!selectedFaction) return null
-    const chars = { ...draft.caracteristicas }
+    const chars = { ...baseSnapshot.caracteristicas }
     selectedFaction.aprendizaje.caracteristicas.forEach((b, i) => {
       chars[getResolvedCharKey(i, b)] += b.valor
     })
-    const skills = { ...draft.habilidades }
+    const skills = { ...baseSnapshot.habilidades }
     selectedFaction.aprendizaje.habilidades.forEach((b, i) => {
       skills[getResolvedSkillKey(i, b)] += b.valor
     })
@@ -63,15 +71,8 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
     const result = computeNewStats()
     if (!result) return
 
-    const maxVal = getMaxStatValue(1)
     const chars = { ...result.chars }
-    for (const key of Object.keys(chars) as CharacteristicKey[]) {
-      if (chars[key] > maxVal) chars[key] = maxVal
-    }
     const skills = { ...result.skills }
-    for (const key of Object.keys(skills) as SkillKey[]) {
-      if (skills[key] > maxVal) skills[key] = maxVal
-    }
 
     // Resolve fixed competencies (apply sub-choices where needed)
     const resolvedFixed = selectedFaction.aprendizaje.competenciasFijas.map((c, i) =>
@@ -84,13 +85,13 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
       .filter(Boolean)
 
     const newComps = [
-      ...draft.competencias,
+      ...baseSnapshot.competencias,
       ...resolvedFixed.map(c => ({ nombre: c, origen: 'Aprendizaje' })),
       ...resolvedChoices.map(c => ({ nombre: c, origen: 'Aprendizaje' })),
     ]
 
     const newBenefits = [
-      ...draft.beneficios,
+      ...baseSnapshot.beneficios,
       {
         nombre: selectedFaction.aprendizaje.beneficio,
         tipo: 'Facción',
@@ -109,6 +110,13 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
       maldicionNombre: selectedFaction.maldicion.nombre,
       maldicionEfecto: selectedFaction.maldicion.efecto,
       premioMaterial: selectedFaction.premioMaterial,
+      // Save snapshot so StepVocation has a clean base for backtracking
+      _snapshotPreVocacion: {
+        caracteristicas: { ...chars },
+        habilidades: { ...skills },
+        competencias: [...newComps],
+        beneficios: [...newBenefits],
+      },
     })
 
     goNext()
@@ -207,14 +215,14 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                   if (!sub) {
                     return (
                       <div key={i} className="info-box" style={{ marginBottom: 'var(--space-xs)' }}>
-                        {c}
+                        <Tooltip text={COMPETENCY_TOOLTIPS[c]}>{c}</Tooltip>
                       </div>
                     )
                   }
                   return (
                     <div key={i} style={{ marginBottom: 'var(--space-sm)' }}>
                       <div className="info-box" style={{ marginBottom: 'var(--space-xs)' }}>
-                        {getDisplayLabel(c)}
+                        <Tooltip text={COMPETENCY_TOOLTIPS[c]}>{getDisplayLabel(c)}</Tooltip>
                       </div>
                       <div style={{ paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
                         <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
@@ -223,13 +231,14 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                         {sub.type === 'buttons' ? (
                           <div className="choice-options">
                             {sub.options.map(opt => (
-                              <button
-                                key={opt}
-                                className={`choice-btn ${fixedSubChoices[i] === opt ? 'chosen' : ''}`}
-                                onClick={() => setFixedSubChoices(prev => ({ ...prev, [i]: opt }))}
-                              >
-                                {opt}
-                              </button>
+                              <Tooltip key={opt} text={COMPETENCY_TOOLTIPS[`${c} (${opt})`] || COMPETENCY_TOOLTIPS[opt]}>
+                                <button
+                                  className={`choice-btn ${fixedSubChoices[i] === opt ? 'chosen' : ''}`}
+                                  onClick={() => setFixedSubChoices(prev => ({ ...prev, [i]: opt }))}
+                                >
+                                  {opt}
+                                </button>
+                              </Tooltip>
                             ))}
                           </div>
                         ) : (
@@ -254,20 +263,21 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                 <div className="choice-group-label">Elige 1 competencia:</div>
                 <div className="choice-options">
                   {group.map(c => (
-                    <button
-                      key={c}
-                      className={`choice-btn ${compGroupChoices[gi] === c ? 'chosen' : ''}`}
-                      onClick={() => {
-                        setCompGroupChoices(prev => {
-                          const next = [...prev]
-                          next[gi] = c
-                          return next
-                        })
-                        setCompGroupSubChoices(prev => { const next = { ...prev }; delete next[gi]; return next })
-                      }}
-                    >
-                      {getDisplayLabel(c)}
-                    </button>
+                    <Tooltip key={c} text={COMPETENCY_TOOLTIPS[c]}>
+                      <button
+                        className={`choice-btn ${compGroupChoices[gi] === c ? 'chosen' : ''}`}
+                        onClick={() => {
+                          setCompGroupChoices(prev => {
+                            const next = [...prev]
+                            next[gi] = c
+                            return next
+                          })
+                          setCompGroupSubChoices(prev => { const next = { ...prev }; delete next[gi]; return next })
+                        }}
+                      >
+                        {getDisplayLabel(c)}
+                      </button>
+                    </Tooltip>
                   ))}
                 </div>
                 {/* Sub-choice when selected option requires further specification */}
@@ -282,13 +292,14 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                       {sub.type === 'buttons' ? (
                         <div className="choice-options">
                           {sub.options.map(opt => (
-                            <button
-                              key={opt}
-                              className={`choice-btn ${compGroupSubChoices[gi] === opt ? 'chosen' : ''}`}
-                              onClick={() => setCompGroupSubChoices(prev => ({ ...prev, [gi]: opt }))}
-                            >
-                              {opt}
-                            </button>
+                            <Tooltip key={opt} text={COMPETENCY_TOOLTIPS[`${compGroupChoices[gi]} (${opt})`] || COMPETENCY_TOOLTIPS[opt]}>
+                              <button
+                                className={`choice-btn ${compGroupSubChoices[gi] === opt ? 'chosen' : ''}`}
+                                onClick={() => setCompGroupSubChoices(prev => ({ ...prev, [gi]: opt }))}
+                              >
+                                {opt}
+                              </button>
+                            </Tooltip>
                           ))}
                         </div>
                       ) : (
@@ -315,7 +326,11 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                 const allOptions = b.alternativas ? [b.caracteristica, ...b.alternativas] : [b.caracteristica]
                 if (allOptions.length === 1) {
                   const meta = CHARACTERISTICS.find(c => c.key === b.caracteristica)
-                  return <div key={i} className="bonus-item bonus-fixed">{meta?.nombre} +{b.valor}</div>
+                  return (
+                    <div key={i} className="bonus-item bonus-fixed">
+                      <Tooltip text={CHARACTERISTIC_TOOLTIPS[b.caracteristica]}>{meta?.nombre} +{b.valor}</Tooltip>
+                    </div>
+                  )
                 }
                 return (
                   <div key={i} className="bonus-item">
@@ -324,13 +339,14 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                       {allOptions.map(opt => {
                         const meta = CHARACTERISTICS.find(c => c.key === opt)
                         return (
-                          <button
-                            key={opt}
-                            className={`choice-btn ${charChoices[i] === opt ? 'chosen' : ''}`}
-                            onClick={() => setCharChoices(prev => ({ ...prev, [i]: opt as CharacteristicKey }))}
-                          >
-                            {meta?.nombre} +{b.valor}
-                          </button>
+                          <Tooltip key={opt} text={CHARACTERISTIC_TOOLTIPS[opt]}>
+                            <button
+                              className={`choice-btn ${charChoices[i] === opt ? 'chosen' : ''}`}
+                              onClick={() => setCharChoices(prev => ({ ...prev, [i]: opt as CharacteristicKey }))}
+                            >
+                              {meta?.nombre} +{b.valor}
+                            </button>
+                          </Tooltip>
                         )
                       })}
                     </div>
@@ -348,7 +364,11 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                 const allOptions = b.alternativas ? [b.habilidad, ...b.alternativas] : [b.habilidad]
                 if (allOptions.length === 1) {
                   const meta = SKILLS.find(s => s.key === b.habilidad)
-                  return <div key={i} className="bonus-item bonus-fixed">{meta?.nombre} +{b.valor}</div>
+                  return (
+                    <div key={i} className="bonus-item bonus-fixed">
+                      <Tooltip text={SKILL_TOOLTIPS[b.habilidad]}>{meta?.nombre} +{b.valor}</Tooltip>
+                    </div>
+                  )
                 }
                 return (
                   <div key={i} className="bonus-item">
@@ -357,13 +377,14 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                       {allOptions.map(opt => {
                         const meta = SKILLS.find(s => s.key === opt)
                         return (
-                          <button
-                            key={opt}
-                            className={`choice-btn ${skillChoices[i] === opt ? 'chosen' : ''}`}
-                            onClick={() => setSkillChoices(prev => ({ ...prev, [i]: opt as SkillKey }))}
-                          >
-                            {meta?.nombre} +{b.valor}
-                          </button>
+                          <Tooltip key={opt} text={SKILL_TOOLTIPS[opt]}>
+                            <button
+                              className={`choice-btn ${skillChoices[i] === opt ? 'chosen' : ''}`}
+                              onClick={() => setSkillChoices(prev => ({ ...prev, [i]: opt as SkillKey }))}
+                            >
+                              {meta?.nombre} +{b.valor}
+                            </button>
+                          </Tooltip>
                         )
                       })}
                     </div>
@@ -377,7 +398,9 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
           <div className="step-section">
             <h3>Beneficio de Facción</h3>
             <div className="info-box">
-              <strong>{selectedFaction.aprendizaje.beneficio}</strong>
+              <Tooltip text={BENEFIT_TOOLTIPS[selectedFaction.aprendizaje.beneficio]}>
+                <strong>{selectedFaction.aprendizaje.beneficio}</strong>
+              </Tooltip>
             </div>
           </div>
 

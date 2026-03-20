@@ -22,11 +22,15 @@ export function StepSpecies({ draft, updateDraft, goNext, goBack }: StepProps) {
       tamano: sp.tamano,
       velocidad: sp.velocidad,
       derechosDeNacimiento: sp.derechosDeNacimiento,
+      donIluminacion: '',
       caracteristicaPrimaria: '',
       caracteristicaSecundaria: '',
       caracteristicas: { ...DEFAULT_CHARACTERISTICS },
     })
   }
+
+  // Ur-obun needs to choose between Psi 1 or Teúrgia 1
+  const needsIluminacionChoice = draft.especie === 'ur-obun'
 
   function selectPrimary(key: CharacteristicKey) {
     const chars = { ...DEFAULT_CHARACTERISTICS }
@@ -56,7 +60,8 @@ export function StepSpecies({ draft, updateDraft, goNext, goBack }: StepProps) {
   const canProceed =
     draft.especie !== '' &&
     draft.caracteristicaPrimaria !== '' &&
-    draft.caracteristicaSecundaria !== ''
+    draft.caracteristicaSecundaria !== '' &&
+    (!needsIluminacionChoice || draft.donIluminacion !== '')
 
   return (
     <div>
@@ -153,6 +158,25 @@ export function StepSpecies({ draft, updateDraft, goNext, goBack }: StepProps) {
                   <li key={i} style={{ marginBottom: 'var(--space-xs)' }}>{d}</li>
                 ))}
               </ul>
+              {needsIluminacionChoice && (
+                <div style={{ marginTop: 'var(--space-sm)' }}>
+                  <h4 style={{ marginBottom: 'var(--space-xs)' }}>Don de la iluminación — elige uno:</h4>
+                  <div className="choice-options">
+                    <button
+                      className={`choice-btn ${draft.donIluminacion === 'psi' ? 'chosen' : ''}`}
+                      onClick={() => updateDraft({ donIluminacion: 'psi' })}
+                    >
+                      Psi 1
+                    </button>
+                    <button
+                      className={`choice-btn ${draft.donIluminacion === 'teurgia' ? 'chosen' : ''}`}
+                      onClick={() => updateDraft({ donIluminacion: 'teurgia' })}
+                    >
+                      Teúrgia 1
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </>
@@ -161,7 +185,18 @@ export function StepSpecies({ draft, updateDraft, goNext, goBack }: StepProps) {
       <div className="step-nav">
         <button className="btn btn-back" onClick={goBack}>← Atrás</button>
         <div style={{ flex: 1 }} />
-        <button className="btn btn-primary" onClick={goNext} disabled={!canProceed}>
+        <button className="btn btn-primary" onClick={() => {
+          // Save snapshot so StepClass has a clean base for backtracking
+          updateDraft({
+            _snapshotPreClase: {
+              caracteristicas: { ...draft.caracteristicas },
+              habilidades: { ...draft.habilidades },
+              competencias: [...draft.competencias],
+              beneficios: [...draft.beneficios],
+            },
+          })
+          goNext()
+        }} disabled={!canProceed}>
           Siguiente →
         </button>
       </div>

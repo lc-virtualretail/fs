@@ -26,6 +26,12 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
   const [affliction, setAffliction] = useState(draft.afliccion)
   const [extraBenefit, setExtraBenefit] = useState(draft.extraBenefit)
 
+  // Snapshot: species+class+faction+vocation state (saved by StepVocation). Stable base for backtracking.
+  const [baseSnapshot] = useState(() => draft._snapshotPreCustomization ?? {
+    competencias: [...draft.competencias],
+    beneficios: [...draft.beneficios],
+  })
+
   // Get all available benefits (class + vocation + free)
   const selectedClass = CLASSES.find(c => c.id === draft.clase)
   const selectedVocation = VOCATIONS.find(v => v.id === draft.vocacion)
@@ -42,12 +48,12 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
   const availableBenefits = allBenefits.filter(b => !chosenBenefitNames.includes(b))
 
   function handleNext() {
-    const newComps = [...draft.competencias]
+    const newComps = [...baseSnapshot.competencias]
     if (freeComp.trim()) {
       newComps.push({ nombre: freeComp.trim(), origen: 'Personalización' })
     }
 
-    const newBenefits = [...draft.beneficios]
+    const newBenefits = [...baseSnapshot.beneficios]
     if (freeBenefit) {
       newBenefits.push({
         nombre: freeBenefit,
