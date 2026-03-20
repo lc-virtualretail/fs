@@ -43,8 +43,8 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
     ]),
   ].sort()
 
-  // Exclude already-chosen benefits
-  const chosenBenefitNames = draft.beneficios.map(b => b.nombre)
+  // Exclude already-chosen benefits (use snapshot base, not draft which may have stale data)
+  const chosenBenefitNames = baseSnapshot.beneficios.map(b => b.nombre)
   const availableBenefits = allBenefits.filter(b => !chosenBenefitNames.includes(b))
 
   function handleNext() {
@@ -189,7 +189,7 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
       <div className="step-section">
         <h3>Beneficios acumulados</h3>
         <div className="info-box">
-          {draft.beneficios.map((b, i) => (
+          {baseSnapshot.beneficios.map((b, i) => (
             <div key={i} style={{ marginBottom: 2 }}>
               <strong>{b.nombre}</strong>
               <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}> ({b.origen})</span>
@@ -214,16 +214,16 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
       <div className="step-section">
         <h3>Competencias acumuladas</h3>
         <div className="info-box">
-          {draft.competencias.map((c, i) => (
+          {baseSnapshot.competencias.map((c, i) => (
             <span key={i}>
               {c.nombre}
               <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}> ({c.origen})</span>
-              {i < draft.competencias.length - 1 ? ' · ' : ''}
+              {i < baseSnapshot.competencias.length - 1 ? ' · ' : ''}
             </span>
           ))}
           {freeComp.trim() && (
             <span>
-              {draft.competencias.length > 0 ? ' · ' : ''}
+              {baseSnapshot.competencias.length > 0 ? ' · ' : ''}
               {freeComp.trim()}
               <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}> (Personalización)</span>
             </span>

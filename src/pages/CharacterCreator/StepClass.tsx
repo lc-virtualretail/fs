@@ -417,7 +417,7 @@ export function StepClass({ draft, updateDraft, goNext, goBack }: StepProps) {
                 totalPoints={totalFreeSkillPoints}
                 remaining={remainingFreeSkillPoints}
                 distribution={freeSkillPoints}
-                baseValues={draft.habilidades as unknown as Record<string, number>}
+                baseValues={baseSnapshot.habilidades as unknown as Record<string, number>}
                 maxValue={8}
                 onChange={setFreeSkillPoints as (d: Record<string, number>) => void}
               />
