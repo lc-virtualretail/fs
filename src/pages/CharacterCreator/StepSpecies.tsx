@@ -1,6 +1,6 @@
 import { SPECIES } from '@/data/species'
 import { CHARACTERISTICS } from '@/data/characteristics'
-import { DEFAULT_CHARACTERISTICS } from '@/types/character'
+import { DEFAULT_CHARACTERISTICS, DEFAULT_SKILLS } from '@/types/character'
 import type { CharacteristicKey } from '@/types/character'
 import { CharacteristicsTable } from './components/CharacteristicsTable'
 import type { StepProps } from './creatorTypes'
@@ -143,12 +143,18 @@ export function StepSpecies({ draft, updateDraft, goNext, goBack }: StepProps) {
             </div>
           </div>
 
-          {draft.caracteristicaPrimaria && draft.caracteristicaSecundaria && (
+          {draft.caracteristicaPrimaria && draft.caracteristicaSecundaria && (() => {
+            // Compute species-only values for display (draft.caracteristicas may have stale bonuses)
+            const displayChars = { ...DEFAULT_CHARACTERISTICS }
+            displayChars[draft.caracteristicaPrimaria] = 5
+            displayChars[draft.caracteristicaSecundaria] = 4
+            return (
             <div className="step-section">
               <h3>Características base</h3>
-              <CharacteristicsTable current={draft.caracteristicas} />
+              <CharacteristicsTable current={displayChars} />
             </div>
-          )}
+            )
+          })()}
 
           {selectedSpecies && selectedSpecies.derechosDeNacimiento.length > 0 && (
             <div className="step-section">
@@ -186,13 +192,23 @@ export function StepSpecies({ draft, updateDraft, goNext, goBack }: StepProps) {
         <button className="btn btn-back" onClick={goBack}>← Atrás</button>
         <div style={{ flex: 1 }} />
         <button className="btn btn-primary" onClick={() => {
-          // Save snapshot so StepClass has a clean base for backtracking
+          // Recompute species-only characteristics from scratch (draft.caracteristicas
+          // may still have bonuses from later steps if user navigated back)
+          const speciesChars = { ...DEFAULT_CHARACTERISTICS }
+          if (draft.caracteristicaPrimaria) speciesChars[draft.caracteristicaPrimaria] = 5
+          if (draft.caracteristicaSecundaria) speciesChars[draft.caracteristicaSecundaria] = 4
+
+          // Reset accumulated stats to species-only state and save snapshot
           updateDraft({
+            caracteristicas: speciesChars,
+            habilidades: { ...DEFAULT_SKILLS },
+            competencias: [],
+            beneficios: [],
             _snapshotPreClase: {
-              caracteristicas: { ...draft.caracteristicas },
-              habilidades: { ...draft.habilidades },
-              competencias: [...draft.competencias],
-              beneficios: [...draft.beneficios],
+              caracteristicas: { ...speciesChars },
+              habilidades: { ...DEFAULT_SKILLS },
+              competencias: [],
+              beneficios: [],
             },
           })
           goNext()
