@@ -4,6 +4,7 @@ import { SKILLS } from '@/data/skills'
 import { ALL_COMPETENCIES } from '@/data/competencies'
 import { CLASSES } from '@/data/classes'
 import { VOCATIONS } from '@/data/vocations'
+import { PSYCHIC_POWERS, PSYCHIC_PATHS, THEURGIC_RITES, THEURGIC_CATEGORIES } from '@/data/occultPowers'
 import { getMaxStatValue } from '@/engine/derived'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { BENEFIT_TOOLTIPS, COMPETENCY_TOOLTIPS, CHARACTERISTIC_TOOLTIPS, SKILL_TOOLTIPS } from '@/data/tooltips'
@@ -330,18 +331,102 @@ export function LevelUpPanel({
           <div className="levelup-section">
             <h4 className="levelup-section-title">Beneficio de vocación</h4>
             <div className="choice-options" style={{ flexWrap: 'wrap' }}>
-              {vocationBenefits.map(b => (
-                <Tooltip key={b} text={BENEFIT_TOOLTIPS[b]}>
-                  <button
-                    className={`choice-btn ${choice.vocationBenefit === b ? 'chosen' : ''}`}
-                    onClick={() => onChange({ ...choice, vocationBenefit: b })}
-                    type="button"
-                  >
-                    {b}
-                  </button>
-                </Tooltip>
-              ))}
+              {vocationBenefits.map(b => {
+                const isMetaPsi = b === 'Poderes Psíquicos'
+                const isMetaRito = b === 'Ritos Teúrgicos'
+                const isMetaBenefit = isMetaPsi || isMetaRito
+                const isSelected = isMetaBenefit
+                  ? choice.vocationBenefit.startsWith(b + ': ')
+                  : choice.vocationBenefit === b
+                return (
+                  <Tooltip key={b} text={BENEFIT_TOOLTIPS[b]}>
+                    <button
+                      className={`choice-btn ${isSelected ? 'chosen' : ''}`}
+                      onClick={() => onChange({ ...choice, vocationBenefit: isMetaBenefit ? b + ': ' : b })}
+                      type="button"
+                    >
+                      {b}
+                    </button>
+                  </Tooltip>
+                )
+              })}
             </div>
+            {/* Sub-selection for Poderes Psíquicos */}
+            {choice.vocationBenefit.startsWith('Poderes Psíquicos: ') && (() => {
+              const selectedPower = choice.vocationBenefit.replace('Poderes Psíquicos: ', '')
+              const currentPsiVal = oculto?.psi ?? 0
+              return (
+                <div style={{ marginTop: 'var(--space-sm)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
+                  <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
+                    Elige un poder psíquico (Psi actual: {currentPsiVal}):
+                  </div>
+                  {PSYCHIC_PATHS.map(senda => {
+                    const powers = PSYCHIC_POWERS.filter(p => p.senda === senda && p.requisitoPsi <= currentPsiVal)
+                    if (powers.length === 0) return null
+                    return (
+                      <div key={senda} style={{ marginBottom: 'var(--space-sm)' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 2 }}>{senda}</div>
+                        <div className="choice-options" style={{ flexWrap: 'wrap' }}>
+                          {powers.map(p => (
+                            <button
+                              key={p.nombre}
+                              className={`choice-btn ${selectedPower === p.nombre ? 'chosen' : ''}`}
+                              onClick={() => onChange({ ...choice, vocationBenefit: `Poderes Psíquicos: ${p.nombre}` })}
+                              type="button"
+                            >
+                              {p.nombre} <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(Psi {p.requisitoPsi})</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {currentPsiVal === 0 && (
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-danger)' }}>
+                      Necesitas Psi 1+ para elegir poderes psíquicos.
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+            {/* Sub-selection for Ritos Teúrgicos */}
+            {choice.vocationBenefit.startsWith('Ritos Teúrgicos: ') && (() => {
+              const selectedRite = choice.vocationBenefit.replace('Ritos Teúrgicos: ', '')
+              const currentTeurgiaVal = oculto?.teurgia ?? 0
+              return (
+                <div style={{ marginTop: 'var(--space-sm)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
+                  <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
+                    Elige un rito teúrgico (Teurgia actual: {currentTeurgiaVal}):
+                  </div>
+                  {THEURGIC_CATEGORIES.map(cat => {
+                    const rites = THEURGIC_RITES.filter(r => r.categoria === cat && r.requisitoTeurgia <= currentTeurgiaVal)
+                    if (rites.length === 0) return null
+                    return (
+                      <div key={cat} style={{ marginBottom: 'var(--space-sm)' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 2 }}>{cat}</div>
+                        <div className="choice-options" style={{ flexWrap: 'wrap' }}>
+                          {rites.map(r => (
+                            <button
+                              key={r.nombre}
+                              className={`choice-btn ${selectedRite === r.nombre ? 'chosen' : ''}`}
+                              onClick={() => onChange({ ...choice, vocationBenefit: `Ritos Teúrgicos: ${r.nombre}` })}
+                              type="button"
+                            >
+                              {r.nombre} <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(T {r.requisitoTeurgia})</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                  {currentTeurgiaVal === 0 && (
+                    <div style={{ fontSize: '0.85rem', color: 'var(--color-danger)' }}>
+                      Necesitas Teurgia 1+ para elegir ritos teúrgicos.
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
           </div>
 
           {/* Class benefit (odd levels only) */}
@@ -545,11 +630,15 @@ export function isLevelUpComplete(choice: LevelUpChoice): boolean {
   const compSubChoice = choice.competency ? getSubChoice(choice.competency) : null
   const compComplete = choice.competency !== '' && (compSubChoice === null || !!choice.competencySub)
 
+  // Meta-benefits must have a sub-selection (not just "Poderes Psíquicos: ")
+  const vocBenComplete = choice.vocationBenefit !== '' &&
+    !choice.vocationBenefit.endsWith(': ')
+
   return (
     charTotal === budget.charPoints &&
     skillTotal === budget.skillPoints &&
     compComplete &&
-    choice.vocationBenefit !== '' &&
+    vocBenComplete &&
     (!budget.hasClassBenefit || choice.classBenefit !== '')
   )
 }
