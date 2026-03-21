@@ -7,17 +7,24 @@ import { CLASSES } from '@/data/classes'
 import { FACTIONS } from '@/data/factions'
 import { VOCATIONS } from '@/data/vocations'
 import { CHARACTERISTIC_CATEGORIES } from '@/data/characteristics'
-import { calcVitality, calcImpulse, calcReanimation, calcBankCapacity, calcUsosMax, calcTecgnosis } from '@/engine/derived'
+import { calcVitality, calcImpulse, calcReanimation, calcBankCapacity, calcUsosMax, calcTecgnosis, calcMentalResistance, calcSpiritualResistance, getMaxStatValue } from '@/engine/derived'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { CHARACTERISTIC_TOOLTIPS, SKILL_TOOLTIPS, COMPETENCY_TOOLTIPS, BENEFIT_TOOLTIPS } from '@/data/tooltips'
 import { buildExportPayload, downloadExport, exportFilename } from '@/utils/characterExportImport'
-import type { Character } from '@/types/character'
+import { LevelUpPanel, isLevelUpComplete } from '@/pages/CharacterCreator/LevelUpPanel'
+import { createEmptyLevelUpChoice, getLevelBudget } from '@/pages/CharacterCreator/creatorTypes'
+import { resolveWithSub } from '@/pages/CharacterCreator/competencyUtils'
+import type { Character, CharacteristicKey, SkillKey } from '@/types/character'
+import type { LevelUpChoice } from '@/pages/CharacterCreator/creatorTypes'
 
 export function CharacterSheet() {
   const { id } = useParams<{ id: string }>()
   const [character, setCharacter] = useState<Character | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [levelingUp, setLevelingUp] = useState(false)
+  const [levelUpChoice, setLevelUpChoice] = useState<LevelUpChoice | null>(null)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!id) {
@@ -59,22 +66,158 @@ export function CharacterSheet() {
   const banco = calcBankCapacity(character.nivel)
   const usosMax = calcUsosMax(character.nivel)
   const tecgnosis = calcTecgnosis(character.nivel)
+  const resMental = calcMentalResistance(character.beneficios)
+  const resEspiritual = calcSpiritualResistance(character.beneficios)
+  const resCorporal = character.armadura?.resistenciaCorporal ?? 0
+
+  const nextLevel = character.nivel + 1
+
+  function startLevelUp() {
+    setLevelUpChoice(createEmptyLevelUpChoice(nextLevel))
+    setLevelingUp(true)
+  }
+
+  function cancelLevelUp() {
+    setLevelingUp(false)
+    setLevelUpChoice(null)
+  }
+
+  async function confirmLevelUp() {
+    if (!character || !levelUpChoice || !isLevelUpComplete(levelUpChoice)) return
+    setSaving(true)
+    try {
+      const newChars = { ...character.caracteristicas }
+      for (const [key, val] of Object.entries(levelUpChoice.charBonuses)) {
+        if (val) newChars[key as CharacteristicKey] += val
+      }
+      const newSkills = { ...character.habilidades }
+      for (const [key, val] of Object.entries(levelUpChoice.skillBonuses)) {
+        if (val) newSkills[key as SkillKey] += val
+      }
+
+      const newComps = [...character.competencias]
+      const resolvedComp = levelUpChoice.competency
+        ? resolveWithSub(levelUpChoice.competency, levelUpChoice.competencySub || undefined)
+        : ''
+      if (resolvedComp) {
+        newComps.push({ nombre: resolvedComp, origen: `Nivel ${nextLevel}` })
+      }
+
+      const newBenefits = [...character.beneficios]
+      if (levelUpChoice.vocationBenefit) {
+        newBenefits.push({
+          nombre: levelUpChoice.vocationBenefit,
+          tipo: 'Vocación',
+          origen: `Nivel ${nextLevel}`,
+          descripcion: `Beneficio de vocación (nivel ${nextLevel})`,
+        })
+      }
+      if (levelUpChoice.classBenefit) {
+        newBenefits.push({
+          nombre: levelUpChoice.classBenefit,
+          tipo: 'Clase',
+          origen: `Nivel ${nextLevel}`,
+          descripcion: `Beneficio de clase (nivel ${nextLevel})`,
+        })
+      }
+
+      const newNivel = nextLevel
+      const newVitalidad = calcVitality({ tamano: character.tamano, caracteristicas: newChars, nivel: newNivel })
+      const newReanimacion = calcReanimation({ tamano: character.tamano, nivel: newNivel })
+      const newImpulso = calcImpulse({ caracteristicas: newChars, nivel: newNivel })
+      const newUsosMax = calcUsosMax(newNivel)
+      const newBanco = calcBankCapacity(newNivel)
+
+      const updates: Partial<Character> = {
+        nivel: newNivel,
+        caracteristicas: newChars,
+        habilidades: newSkills,
+        competencias: newComps,
+        beneficios: newBenefits,
+        vitalidadMaxima: newVitalidad,
+        vitalidadActual: Math.min(character.vitalidadActual + 1, newVitalidad),
+        reanimacionesCantidad: newReanimacion,
+        reanimacionesUsosMax: newUsosMax,
+        reanimacionesUsos: Math.min(character.reanimacionesUsos, newUsosMax),
+        impulsoCantidad: newImpulso,
+        impulsoUsosMax: newUsosMax,
+        impulsoUsos: Math.min(character.impulsoUsos, newUsosMax),
+        bancoPVCapacidad: newBanco,
+        pvActuales: Math.min(character.pvActuales, newBanco),
+        tecgnosis: calcTecgnosis(newNivel),
+        resistencias: {
+          ...character.resistencias,
+          mental: calcMentalResistance(newBenefits),
+          espiritual: calcSpiritualResistance(newBenefits),
+        },
+        updatedAt: new Date().toISOString(),
+      }
+
+      await db.characters.update(character.id, updates)
+      setCharacter({ ...character, ...updates } as Character)
+      setLevelingUp(false)
+      setLevelUpChoice(null)
+    } catch (err) {
+      console.error('Error saving level up:', err)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div className="sheet">
       <header className="sheet-header">
         <div className="sheet-header-top">
           <Link to="/personajes" className="sheet-back">← Personajes</Link>
-          <button className="sheet-export-btn" onClick={() => {
-            const payload = buildExportPayload([character])
-            downloadExport(payload, exportFilename(character.nombre))
-          }}>Exportar</button>
+          <div style={{ display: 'flex', gap: 'var(--space-sm)' }}>
+            <button className="sheet-export-btn" onClick={() => {
+              const payload = buildExportPayload([character])
+              downloadExport(payload, exportFilename(character.nombre))
+            }}>Exportar</button>
+            {!levelingUp && (
+              <button className="sheet-levelup-btn" onClick={startLevelUp}>
+                Subir de Nivel
+              </button>
+            )}
+          </div>
         </div>
         <h1 className="sheet-name">{character.nombre}</h1>
         <div className="sheet-subtitle">
           {species?.nombre} · {cls?.nombre} · {faction?.nombre} · Nivel {character.nivel}
         </div>
       </header>
+
+      {/* Level Up Panel */}
+      {levelingUp && levelUpChoice && (
+        <section className="sheet-section sheet-levelup-section">
+          <h2>Subir a Nivel {nextLevel}</h2>
+          <div className="info-box" style={{ marginBottom: 'var(--space-md)', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+            {(() => {
+              const b = getLevelBudget(nextLevel)
+              return `+${b.charPoints} característica(s), +${b.skillPoints} habilidad(es), 1 competencia, 1 beneficio de vocación${b.hasClassBenefit ? ', 1 beneficio de clase' : ''}. Máximo por stat: ${getMaxStatValue(nextLevel)}.`
+            })()}
+          </div>
+          <LevelUpPanel
+            choice={levelUpChoice}
+            onChange={setLevelUpChoice}
+            baseChars={character.caracteristicas}
+            baseSkills={character.habilidades}
+            chosenCompetencies={character.competencias.map(c => c.nombre)}
+            claseId={character.clase}
+            vocacionId={character.vocacion}
+          />
+          <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-md)', justifyContent: 'flex-end' }}>
+            <button className="btn btn-back" onClick={cancelLevelUp}>Cancelar</button>
+            <button
+              className="btn btn-primary"
+              onClick={confirmLevelUp}
+              disabled={saving || !isLevelUpComplete(levelUpChoice)}
+            >
+              {saving ? 'Guardando...' : 'Confirmar Nivel'}
+            </button>
+          </div>
+        </section>
+      )}
 
       {/* Identity */}
       <section className="sheet-section">
@@ -165,6 +308,28 @@ export function CharacterSheet() {
           <div className="derived-card">
             <div className="derived-label">Tecgnosis</div>
             <div className="derived-value">{tecgnosis}</div>
+          </div>
+        </div>
+      </section>
+
+      {/* Resistances */}
+      <section className="sheet-section">
+        <h2>Resistencias</h2>
+        <div className="derived-grid">
+          <div className="derived-card">
+            <div className="derived-label">Corporal</div>
+            <div className="derived-value">{resCorporal}</div>
+            <div className="derived-detail">{character.armadura?.nombre ?? 'Sin armadura'}</div>
+          </div>
+          <div className="derived-card">
+            <div className="derived-label">Mental</div>
+            <div className="derived-value">{resMental}</div>
+            <div className="derived-detail">Rangos y beneficios</div>
+          </div>
+          <div className="derived-card">
+            <div className="derived-label">Espiritual</div>
+            <div className="derived-value">{resEspiritual}</div>
+            <div className="derived-detail">Austeridades</div>
           </div>
         </div>
       </section>
@@ -331,6 +496,26 @@ export function CharacterSheet() {
         .sheet-export-btn:hover {
           border-color: var(--color-accent);
           color: var(--color-accent);
+        }
+        .sheet-levelup-btn {
+          padding: var(--space-xs) var(--space-md);
+          background: var(--color-accent);
+          border: 1px solid var(--color-accent);
+          border-radius: var(--radius-sm);
+          color: var(--color-bg);
+          font-size: 0.85rem;
+          font-weight: bold;
+          cursor: pointer;
+          transition: opacity 0.15s;
+        }
+        .sheet-levelup-btn:hover {
+          opacity: 0.85;
+        }
+        .sheet-levelup-section {
+          background: rgba(196, 163, 90, 0.05);
+          border: 1px solid var(--color-accent);
+          border-radius: var(--radius-md);
+          padding: var(--space-md);
         }
         .sheet-name {
           font-size: 1.8rem;

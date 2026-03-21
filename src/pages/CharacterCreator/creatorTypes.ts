@@ -9,6 +9,39 @@ import type {
   CompetencyEntry,
   BenefitEntry,
 } from '@/types/character'
+
+// ─── Level-Up Types ───
+
+export interface LevelUpChoice {
+  level: number
+  charBonuses: Partial<Record<CharacteristicKey, number>>
+  skillBonuses: Partial<Record<SkillKey, number>>
+  competency: string        // resolved name
+  competencySub: string     // sub-choice if needed
+  vocationBenefit: string
+  classBenefit: string      // empty if even level
+}
+
+export function getLevelBudget(level: number) {
+  const isEven = level % 2 === 0
+  return {
+    charPoints: isEven ? 2 : 1,
+    skillPoints: isEven ? 3 : 2,
+    hasClassBenefit: !isEven && level >= 3,
+  }
+}
+
+export function createEmptyLevelUpChoice(level: number): LevelUpChoice {
+  return {
+    level,
+    charBonuses: {},
+    skillBonuses: {},
+    competency: '',
+    competencySub: '',
+    vocationBenefit: '',
+    classBenefit: '',
+  }
+}
 import { DEFAULT_CHARACTERISTICS, DEFAULT_SKILLS } from '@/types/character'
 
 // ─── Wizard Step IDs ───
@@ -93,6 +126,10 @@ export interface CharacterDraft {
   afliccion: string
   extraBenefit: string // if affliction chosen
 
+  // Level-up (optional, default level 1)
+  nivelObjetivo: number
+  levelUpChoices: LevelUpChoice[]
+
   // Equipment from vocation
   equipoVocacion: string[]
 
@@ -141,6 +178,9 @@ export function createEmptyDraft(): CharacterDraft {
     freeBenefit: '',
     afliccion: '',
     extraBenefit: '',
+
+    nivelObjetivo: 1,
+    levelUpChoices: [],
 
     equipoVocacion: [],
   }

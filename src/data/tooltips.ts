@@ -418,6 +418,32 @@ export const BENEFIT_TOOLTIPS: Record<string, string> = {
 
   // ── Other benefits ──
   'Acuerdo de Pasaje': 'Vocación • Privilegio • Requisito: Libre. No necesitas reservar pasaje en naves estelares. Habitación compartida en transportes. Con Riqueza Acomodado+, camarote propio. Adquiérelo dos veces para incluir a tu compañía.',
+
+  // ── Free benefits (missing) ──
+  'Aliado': 'Vocación • Privilegio • Requisito: Libre. Tienes una relación cercana con un PNJ en posición de poder que se esforzará por ayudarte a cambio de favores ocasionales.',
+  'Contacto': 'Vocación • Privilegio • Requisito: Libre. Tienes un conocido de alguna vocación o facción que puede darte información, venderte equipamiento o proporcionarte un lugar donde quedarte.',
+  'Contactos Criminales': 'Vocación • Privilegio • Requisitos: Libre y Bajos Fondos. Sabes cómo contactar con los bajos fondos y adquirir productos y servicios ilegales del mercado negro.',
+  'Influyente': 'Vocación • Privilegio • Requisitos: Libre y Usos de la Corte y Usos del Vulgo. Eres un referente de moda y tendencia; tu presencia convierte cualquier evento en un éxito.',
+  'Mano Firme': 'Vocación • Capacidad • Requisito: Libre. Permaneces inalterable en situaciones de caos. Una vez por acto puedes crear un arca inalterable con PV basados en tus características de Mente + nivel.',
+  'Red de Cotilleos': 'Vocación • Privilegio • Requisitos: Libre y un Saber de Usos. Tus informantes te dan +2 a la meta de tiradas de influencia contra personas al alcance de tu red.',
+  'Sentido del Peligro': 'Vocación • Ímpetu • Requisito: Libre. Una vez por escena puedes depositar PV en un arca de vigilancia (2 PV por punto, máx. Observar) que añade Percepción +1 cada uno a tu percepción instintiva.',
+
+  // ── Afflictions ──
+  'Adicción': 'Aflicción. Necesitas consumir una sustancia al menos una vez por semana o sufrirás síntomas de abstinencia. A nivel 6 la dependencia se intensifica.',
+  'Cobardía': 'Aflicción. Tienes una tendencia abrumadora a evitar el peligro. Cuando te enfrentas a situaciones de riesgo, puedes sufrir penalizaciones o verte obligado a huir.',
+  'Curiosidad Compulsiva': 'Aflicción. No puedes resistir la tentación de investigar misterios y secretos, incluso cuando hacerlo te pone en peligro.',
+  'Deuda': 'Aflicción. Debes una gran cantidad de dinero. No puedes adquirir Riqueza y deberás trabajar duro para saldar la deuda antes de que tu acreedor tome medidas.',
+  'Devoción Fanática': 'Aflicción. Estás obsesionado con una causa, fe o persona hasta el punto de sacrificar tu bienestar y el de otros por ella.',
+  'Enemigo': 'Aflicción. Alguien te ha señalado como su objetivo. Esta persona o grupo hará todo lo posible por complicarte la vida o eliminarte.',
+  'Fobia': 'Aflicción. Tienes un miedo irracional e intenso a algo específico. Cuando te enfrentas al objeto de tu fobia, sufres penalizaciones a tus tiradas.',
+  'Impulsivo': 'Aflicción. Actúas antes de pensar. Tienes dificultades para contenerte y tiendes a tomar decisiones precipitadas en momentos de tensión.',
+  'Juramento': 'Aflicción. Has jurado fidelidad a alguien que puede exigirte servicios más allá de las obligaciones habituales de tu clase.',
+  'Lisiado': 'Aflicción. Tienes una herida o discapacidad física permanente que limita tus capacidades en determinadas situaciones.',
+  'Marcado': 'Aflicción. Llevas una marca visible (hierro, tatuaje, etc.) que te identifica como criminal o indeseable. Tus tiradas de persuasión son desfavorables ante quienes la vean.',
+  'Obsesión': 'Aflicción. Estás obsesionado con un objetivo, objeto o persona. Esta fijación puede nublar tu juicio y llevarte a actuar de forma irracional.',
+  'Pesadillas': 'Aflicción. Sufres pesadillas recurrentes que perturban tu descanso. Esto puede afectar tu rendimiento y tu estabilidad mental.',
+  'Secreto Oscuro': 'Aflicción. Escondes algo tan terrible que harías casi cualquier cosa por evitar que salga a la luz. Si se descubre, podrían ofrecer una recompensa por ti.',
+  'Vengativo': 'Aflicción. Alguien te ha causado un agravio imperdonable. No descansarás hasta obtener tu venganza, lo que puede ponerte en situaciones peligrosas.',
 }
 
 /**

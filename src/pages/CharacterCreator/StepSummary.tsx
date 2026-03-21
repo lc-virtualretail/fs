@@ -7,7 +7,7 @@ import { CLASSES } from '@/data/classes'
 import { FACTIONS } from '@/data/factions'
 import { VOCATIONS } from '@/data/vocations'
 import { CHARACTERISTICS } from '@/data/characteristics'
-import { calcVitality, calcImpulse, calcReanimation, calcBankCapacity, calcUsosMax, calcTecgnosis, getMaxStatValue } from '@/engine/derived'
+import { calcVitality, calcImpulse, calcReanimation, calcBankCapacity, calcUsosMax, calcTecgnosis, getMaxStatValue, calcMentalResistance, calcSpiritualResistance } from '@/engine/derived'
 import type { Character, CharacteristicKey, SkillKey, Characteristics, Skills } from '@/types/character'
 import type { CharacterDraft } from './creatorTypes'
 import { CharacteristicsTable } from './components/CharacteristicsTable'
@@ -28,7 +28,7 @@ export function StepSummary({ draft, goBack }: Props) {
   const faction = FACTIONS.find(f => f.id === draft.faccion)
   const vocation = VOCATIONS.find(v => v.id === draft.vocacion)
 
-  const nivel = 1
+  const nivel = draft.nivelObjetivo || 1
   const maxVal = getMaxStatValue(nivel)
 
   // --- Excess redistribution logic ---
@@ -149,8 +149,8 @@ export function StepSummary({ draft, goBack }: Props) {
         },
         resistencias: {
           corporal: 0,
-          mental: 0,
-          espiritual: 0,
+          mental: calcMentalResistance(draft.beneficios),
+          espiritual: calcSpiritualResistance(draft.beneficios),
           corporalMod: 0,
           mentalMod: 0,
           espiritualMod: 0,

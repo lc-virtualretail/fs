@@ -19,6 +19,8 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
   const [compGroupSubChoices, setCompGroupSubChoices] = useState<Record<number, string>>({})
   // Sub-choice for each fixed competency that needs further specification
   const [fixedSubChoices, setFixedSubChoices] = useState<Record<number, string>>({})
+  // Second-level sub-choice (e.g. Saber → Saber Médico → Cirugía)
+  const [fixedSubChoices2, setFixedSubChoices2] = useState<Record<number, string>>({})
   const [charChoices, setCharChoices] = useState<Record<number, CharacteristicKey>>({})
   const [skillChoices, setSkillChoices] = useState<Record<number, SkillKey>>({})
 
@@ -35,6 +37,7 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
     setCompGroupChoices([])
     setCompGroupSubChoices({})
     setFixedSubChoices({})
+    setFixedSubChoices2({})
     setCharChoices({})
     setSkillChoices({})
   }, [draft.faccion])
@@ -74,10 +77,11 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
     const chars = { ...result.chars }
     const skills = { ...result.skills }
 
-    // Resolve fixed competencies (apply sub-choices where needed)
-    const resolvedFixed = selectedFaction.aprendizaje.competenciasFijas.map((c, i) =>
-      resolveWithSub(c, fixedSubChoices[i])
-    )
+    // Resolve fixed competencies (apply sub-choices where needed, chaining two levels)
+    const resolvedFixed = selectedFaction.aprendizaje.competenciasFijas.map((c, i) => {
+      const level1 = resolveWithSub(c, fixedSubChoices[i])
+      return resolveWithSub(level1, fixedSubChoices2[i])
+    })
 
     // Resolve choice group competencies (apply sub-choices where needed)
     const resolvedChoices = compGroupChoices
@@ -133,7 +137,12 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
 
   const fixedComplete = !selectedFaction || selectedFaction.aprendizaje.competenciasFijas.every((c, i) => {
     const sub = getSubChoice(c)
-    if (sub !== null) return !!fixedSubChoices[i]
+    if (sub === null) return true
+    if (!fixedSubChoices[i]) return false
+    // Check if the chosen level-1 option itself needs a sub-choice
+    const resolved1 = resolveWithSub(c, fixedSubChoices[i])
+    const sub2 = getSubChoice(resolved1)
+    if (sub2 !== null) return !!fixedSubChoices2[i]
     return true
   })
 
@@ -219,6 +228,9 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                       </div>
                     )
                   }
+                  // Check if the chosen level-1 option itself needs a sub-choice
+                  const resolved1 = fixedSubChoices[i] ? resolveWithSub(c, fixedSubChoices[i]) : undefined
+                  const sub2 = resolved1 ? getSubChoice(resolved1) : null
                   return (
                     <div key={i} style={{ marginBottom: 'var(--space-sm)' }}>
                       <div className="info-box" style={{ marginBottom: 'var(--space-xs)' }}>
@@ -234,7 +246,10 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                               <Tooltip key={opt} text={COMPETENCY_TOOLTIPS[`${c} (${opt})`] || COMPETENCY_TOOLTIPS[opt]}>
                                 <button
                                   className={`choice-btn ${fixedSubChoices[i] === opt ? 'chosen' : ''}`}
-                                  onClick={() => setFixedSubChoices(prev => ({ ...prev, [i]: opt }))}
+                                  onClick={() => {
+                                    setFixedSubChoices(prev => ({ ...prev, [i]: opt }))
+                                    setFixedSubChoices2(prev => { const next = { ...prev }; delete next[i]; return next })
+                                  }}
                                 >
                                   {opt}
                                 </button>
@@ -249,6 +264,36 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                             onChange={e => setFixedSubChoices(prev => ({ ...prev, [i]: e.target.value }))}
                             style={{ width: '100%', maxWidth: 320 }}
                           />
+                        )}
+                        {/* Level-2 sub-choice */}
+                        {sub2 && (
+                          <div style={{ marginTop: 'var(--space-xs)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
+                            <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
+                              Especifica especialización:
+                            </div>
+                            {sub2.type === 'buttons' ? (
+                              <div className="choice-options">
+                                {sub2.options.map(opt => (
+                                  <Tooltip key={opt} text={COMPETENCY_TOOLTIPS[opt]}>
+                                    <button
+                                      className={`choice-btn ${fixedSubChoices2[i] === opt ? 'chosen' : ''}`}
+                                      onClick={() => setFixedSubChoices2(prev => ({ ...prev, [i]: opt }))}
+                                    >
+                                      {opt}
+                                    </button>
+                                  </Tooltip>
+                                ))}
+                              </div>
+                            ) : (
+                              <input
+                                type="text"
+                                placeholder={sub2.placeholder}
+                                value={fixedSubChoices2[i] ?? ''}
+                                onChange={e => setFixedSubChoices2(prev => ({ ...prev, [i]: e.target.value }))}
+                                style={{ width: '100%', maxWidth: 320 }}
+                              />
+                            )}
+                          </div>
                         )}
                       </div>
                     </div>

@@ -32,14 +32,8 @@ export const ALL_COMPETENCIES: string[] = [
   // — Máquinas Pensantes —
   'Máquinas Pensantes',
 
-  // — Transporte (individual) —
-  'Monta',
-  'Vehículos Acuáticos',
-  'Vehículos Aéreos',
-  'Vehículos de Animales',
-  'Vehículos de Guerra',
-  'Vehículos Espaciales',
-  'Vehículos Terrestres',
+  // — Transporte (sub-choice: vehicle type) —
+  'Transporte',
 
   // — Idiomas —
   'Hablar (idioma a elegir)',
@@ -65,34 +59,17 @@ export const ALL_COMPETENCIES: string[] = [
   // — Saber Científico (wrapped sub-types) —
   'Saber Científico',
 
-  // — Saber de Oficios (individual crafts) —
-  'Arquitectura',
-  'Carpintería',
-  'Cartografía',
-  'Cerámica',
-  'Cerrajería',
-  'Cocina',
-  'Herrería',
-  'Joyería',
-  'Marroquinería',
-  'Mampostería',
-  'Sastrería',
-  'Tejeduría',
+  // — Saber de Oficios (sub-choice: crafts) —
+  'Saber de Oficios',
 
-  // — Saber de Usos (individual) —
-  'Bajos Fondos',
-  'Usos de la Catedral',
-  'Usos de la Corte',
-  'Usos del Vulgo',
+  // — Saber de Usos (sub-choice: social milieu) —
+  'Saber de Usos',
 
-  // — Artes Escénicas (wrapped sub-types) —
+  // — Artes Escénicas (sub-choice: performing arts) —
   'Artes Escénicas',
 
-  // — Saber Médico (individual) —
-  'Cirugía',
-  'Enfermedades',
-  'Tortura',
-  'Venenos',
+  // — Saber Médico (sub-choice: specialization) —
+  'Saber Médico',
 
   // — Saber Tecnológico (wrapped sub-types: NT5–NT8) —
   'Saber Tecnológico',

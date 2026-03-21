@@ -55,6 +55,29 @@ const bareCategorySubChoices: Record<string, { options: string[]; resolveToSub: 
     options: ['Bajos Fondos', 'Usos de la Catedral', 'Usos de la Corte', 'Usos del Vulgo'],
     resolveToSub: true,
   },
+  'Saber de Facción': {
+    options: [
+      'al-Malik', 'Decados', 'Hawkwood', 'Hazat', 'Li Halan',
+      'Hermanos de Batalla', 'Orden Eskatónica', 'Ortodoxia',
+      'Santuario de Aeón', 'Templo Avesti',
+      'Aurigas', 'Carroñeros', 'Ingenieros', 'Magistrados',
+      'La Asamblea', 'Los Desposeídos', 'ODA',
+      'Sociedad de San Pablo', 'Vagabundos', 'Bárbaros Vuldrok',
+    ],
+    resolveToSub: false,
+  },
+  'Saber Alienígena': {
+    options: ['Obun', 'Ukar', 'Vorox', 'Etyri', 'Gannok', 'Shantor'],
+    resolveToSub: false,
+  },
+  'Saber Animal': {
+    options: ['Mundos Conocidos', 'Territorio Bárbaro'],
+    resolveToSub: false,
+  },
+  'Saber de Red de Salto': {
+    options: ['Mundos Conocidos', 'Territorio Bárbaro'],
+    resolveToSub: false,
+  },
   'Saber Tecnológico': {
     options: ['NT5', 'NT6', 'NT7', 'NT8'],
     resolveToSub: false,
@@ -79,6 +102,10 @@ const knownSubTypes: Record<string, { options: string[]; resolveToSub: boolean }
   'Armadura': { options: ['Combate', 'Guerra'], resolveToSub: false },
   'Instrumento Musical': {
     options: ['Cuerda', 'Viento madera', 'Percusión', 'Teclado', 'Viento metal'],
+    resolveToSub: false,
+  },
+  'Saber Alienígena': {
+    options: ['Obun', 'Ukar', 'Vorox', 'Etyri', 'Gannok', 'Shantor'],
     resolveToSub: false,
   },
   'Saber Animal': {
@@ -109,6 +136,27 @@ const knownSubTypes: Record<string, { options: string[]; resolveToSub: boolean }
     options: ['Ciencias Aplicadas', 'Ciencias de la Vida', 'Ciencias Naturales'],
     resolveToSub: true,
   },
+  'Saber de Facción': {
+    options: [
+      'al-Malik', 'Decados', 'Hawkwood', 'Hazat', 'Li Halan',
+      'Hermanos de Batalla', 'Orden Eskatónica', 'Ortodoxia',
+      'Santuario de Aeón', 'Templo Avesti',
+      'Aurigas', 'Carroñeros', 'Ingenieros', 'Magistrados',
+      'La Asamblea', 'Los Desposeídos', 'ODA',
+      'Sociedad de San Pablo', 'Vagabundos', 'Bárbaros Vuldrok',
+    ],
+    resolveToSub: false,
+  },
+  'Saber': {
+    options: [
+      'Saber Alienígena', 'Saber Animal', 'Saber Artístico',
+      'Saber Científico', 'Saber de Facción', 'Saber de Historia',
+      'Saber de Oficios', 'Saber de Red de Salto', 'Saber de Usos',
+      'Saber Marcial', 'Saber Médico', 'Saber Oculto',
+      'Saber Planetario', 'Saber Religioso', 'Saber Tecnológico',
+    ],
+    resolveToSub: true,
+  },
 }
 
 /**
@@ -132,7 +180,7 @@ export function getSubChoice(comp: string): SubChoice | null {
   if (!match) return null
   const content = match[1] ?? ''
 
-  if (content === 'cualquiera' || content.includes('elegir')) {
+  if (content === 'cualquiera' || content.includes('elegir') || content.includes('elige')) {
     const base = comp.replace(/\s*\([^)]+\)/, '').trim()
     const known = knownSubTypes[base]
     if (known) {

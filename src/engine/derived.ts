@@ -53,3 +53,34 @@ export function getMaxStatValue(nivel: number): number {
   if (nivel >= 2) return 9
   return 8
 }
+
+/**
+ * Resistencia Mental = rangos sociales (+2 cada uno) + beneficios específicos.
+ * Los rangos sociales son: Título Nobiliario, Ordenación Religiosa,
+ * Cargo Gremial, Reputación Profesional.
+ * Beneficios que dan +2 incondicional: Mente Estoica, Sabio.
+ */
+const RANK_BENEFITS = ['Título Nobiliario', 'Ordenación Religiosa', 'Cargo Gremial', 'Reputación Profesional']
+const MENTAL_FLAT_BENEFITS = ['Mente Estoica', 'Sabio']
+
+export function calcMentalResistance(beneficios: { nombre: string }[]): number {
+  let total = 0
+  for (const b of beneficios) {
+    if (RANK_BENEFITS.some(r => b.nombre.startsWith(r))) total += 2
+    if (MENTAL_FLAT_BENEFITS.includes(b.nombre)) total += 2
+  }
+  return total
+}
+
+/**
+ * Resistencia Espiritual = austeridades (+2, NO se acumulan entre sí).
+ * Si tienes al menos una austeridad, R.Espiritual = 2.
+ */
+const AUSTERITY_BENEFITS = [
+  'Armadura de Pureza', 'Condicionamiento Mental', 'Conocimiento Wyrd',
+  'Incubación', 'Resurgir de las Cenizas', 'Voto de Pobreza',
+]
+
+export function calcSpiritualResistance(beneficios: { nombre: string }[]): number {
+  return beneficios.some(b => AUSTERITY_BENEFITS.includes(b.nombre)) ? 2 : 0
+}
