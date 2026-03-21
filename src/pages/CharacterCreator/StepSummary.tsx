@@ -142,9 +142,11 @@ export function StepSummary({ draft, goBack }: Props) {
         caracteristicas: { ...finalChars },
         habilidades: { ...finalSkills },
         oculto: {
-          psi: draft.donIluminacion === 'psi' || draft.especie === 'ur-ukar' ? 1 : 0,
+          psi: (draft.donIluminacion === 'psi' || draft.especie === 'ur-ukar' ? 1 : 0)
+            + (draft.levelUpChoices ?? []).reduce((s, lc) => s + (lc.psiBonus ?? 0), 0),
           ansia: 0,
-          teurgia: draft.donIluminacion === 'teurgia' ? 1 : 0,
+          teurgia: (draft.donIluminacion === 'teurgia' ? 1 : 0)
+            + (draft.levelUpChoices ?? []).reduce((s, lc) => s + (lc.teurgiaBonus ?? 0), 0),
           hubris: 0,
         },
         resistencias: {
@@ -259,9 +261,11 @@ export function StepSummary({ draft, goBack }: Props) {
                   const canRemove = added > 0
                   return (
                     <div key={c.key} className="redist-row">
-                      <Tooltip text={CHARACTERISTIC_TOOLTIPS[c.key]}>
-                      <span className="redist-name">{c.nombre} ({c.abreviatura})</span>
-                    </Tooltip>
+                      <span className="redist-name">
+                        <Tooltip text={CHARACTERISTIC_TOOLTIPS[c.key]}>
+                          <span>{c.nombre} ({c.abreviatura})</span>
+                        </Tooltip>
+                      </span>
                       <span className="redist-val">{baseVal}</span>
                       <button
                         className="redist-btn"
@@ -311,12 +315,14 @@ export function StepSummary({ draft, goBack }: Props) {
                   const canRemove = added > 0
                   return (
                     <div key={s.key} className="redist-row">
-                      <Tooltip text={SKILL_TOOLTIPS[s.key]}>
-                        <span className="redist-name">
-                          {s.nombre}
-                          {s.restringida && <span className="skill-restricted"> (R)</span>}
-                        </span>
-                      </Tooltip>
+                      <span className="redist-name">
+                        <Tooltip text={SKILL_TOOLTIPS[s.key]}>
+                          <span>
+                            {s.nombre}
+                            {s.restringida && <span className="skill-restricted"> (R)</span>}
+                          </span>
+                        </Tooltip>
+                      </span>
                       <span className="redist-val">{baseVal}</span>
                       <button
                         className="redist-btn"
@@ -354,15 +360,17 @@ export function StepSummary({ draft, goBack }: Props) {
             const base = skill.valorBase
             const changed = val !== base
             return (
-              <Tooltip key={skill.key} text={SKILL_TOOLTIPS[skill.key]}>
-                <div className={`skill-row ${changed ? 'skill-changed' : ''}`}>
-                  <span className="skill-name">
-                    {skill.nombre}
-                    {skill.restringida && <span className="skill-restricted"> (R)</span>}
-                  </span>
-                  <span className="skill-value">{val}</span>
-                </div>
-              </Tooltip>
+              <div key={skill.key} className={`skill-row ${changed ? 'skill-changed' : ''}`}>
+                <span className="skill-name">
+                  <Tooltip text={SKILL_TOOLTIPS[skill.key]}>
+                    <span>
+                      {skill.nombre}
+                      {skill.restringida && <span className="skill-restricted"> (R)</span>}
+                    </span>
+                  </Tooltip>
+                </span>
+                <span className="skill-value">{val}</span>
+              </div>
             )
           })}
         </div>

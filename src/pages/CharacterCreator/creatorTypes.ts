@@ -16,6 +16,8 @@ export interface LevelUpChoice {
   level: number
   charBonuses: Partial<Record<CharacteristicKey, number>>
   skillBonuses: Partial<Record<SkillKey, number>>
+  psiBonus: number          // shares charPoints budget
+  teurgiaBonus: number      // shares charPoints budget
   competency: string        // resolved name
   competencySub: string     // sub-choice if needed
   vocationBenefit: string
@@ -36,6 +38,8 @@ export function createEmptyLevelUpChoice(level: number): LevelUpChoice {
     level,
     charBonuses: {},
     skillBonuses: {},
+    psiBonus: 0,
+    teurgiaBonus: 0,
     competency: '',
     competencySub: '',
     vocationBenefit: '',

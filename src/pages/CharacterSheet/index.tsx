@@ -145,6 +145,11 @@ export function CharacterSheet() {
         bancoPVCapacidad: newBanco,
         pvActuales: Math.min(character.pvActuales, newBanco),
         tecgnosis: calcTecgnosis(newNivel),
+        oculto: {
+          ...character.oculto,
+          psi: character.oculto.psi + (levelUpChoice.psiBonus ?? 0),
+          teurgia: character.oculto.teurgia + (levelUpChoice.teurgiaBonus ?? 0),
+        },
         resistencias: {
           ...character.resistencias,
           mental: calcMentalResistance(newBenefits),
@@ -205,7 +210,55 @@ export function CharacterSheet() {
             chosenCompetencies={character.competencias.map(c => c.nombre)}
             claseId={character.clase}
             vocacionId={character.vocacion}
+            oculto={character.oculto}
           />
+          {/* Derived stats preview */}
+          {(() => {
+            const previewChars = { ...character.caracteristicas }
+            for (const [key, val] of Object.entries(levelUpChoice.charBonuses)) {
+              if (val) previewChars[key as CharacteristicKey] += val
+            }
+            const pVit = calcVitality({ tamano: character.tamano, caracteristicas: previewChars, nivel: nextLevel })
+            const pRean = calcReanimation({ tamano: character.tamano, nivel: nextLevel })
+            const pImp = calcImpulse({ caracteristicas: previewChars, nivel: nextLevel })
+            const pUsos = calcUsosMax(nextLevel)
+            const pBanco = calcBankCapacity(nextLevel)
+            const pTecg = calcTecgnosis(nextLevel)
+            return (
+              <div style={{ marginTop: 'var(--space-md)' }}>
+                <h3 style={{ fontSize: '0.95rem', color: 'var(--color-accent)', marginBottom: 'var(--space-sm)' }}>
+                  Valores proyectados (Nivel {nextLevel})
+                </h3>
+                <div className="derived-grid">
+                  <div className="derived-card">
+                    <div className="derived-label">Vitalidad</div>
+                    <div className="derived-value">{pVit}</div>
+                    <div className="derived-detail">actual: {vitalidad} → {pVit}</div>
+                  </div>
+                  <div className="derived-card">
+                    <div className="derived-label">Reanimación</div>
+                    <div className="derived-value">{pRean}</div>
+                    <div className="derived-detail">{pUsos} uso(s)</div>
+                  </div>
+                  <div className="derived-card">
+                    <div className="derived-label">Impulso</div>
+                    <div className="derived-value">{pImp}</div>
+                    <div className="derived-detail">{pUsos} uso(s)</div>
+                  </div>
+                  <div className="derived-card">
+                    <div className="derived-label">Banco PV</div>
+                    <div className="derived-value">{pBanco}</div>
+                    <div className="derived-detail">actual: {banco} → {pBanco}</div>
+                  </div>
+                  <div className="derived-card">
+                    <div className="derived-label">Tecgnosis</div>
+                    <div className="derived-value">{pTecg}</div>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
           <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-md)', justifyContent: 'flex-end' }}>
             <button className="btn btn-back" onClick={cancelLevelUp}>Cancelar</button>
             <button
@@ -267,15 +320,17 @@ export function CharacterSheet() {
             const val = character.habilidades[skill.key]
             const changed = val !== skill.valorBase
             return (
-              <Tooltip key={skill.key} text={SKILL_TOOLTIPS[skill.key]}>
-                <div className={`skill-row ${changed ? 'skill-changed' : ''}`}>
-                  <span className="skill-name">
-                    {skill.nombre}
-                    {skill.restringida && <span className="skill-restricted"> (R)</span>}
-                  </span>
-                  <span className="skill-value">{val}</span>
-                </div>
-              </Tooltip>
+              <div key={skill.key} className={`skill-row ${changed ? 'skill-changed' : ''}`}>
+                <span className="skill-name">
+                  <Tooltip text={SKILL_TOOLTIPS[skill.key]}>
+                    <span>
+                      {skill.nombre}
+                      {skill.restringida && <span className="skill-restricted"> (R)</span>}
+                    </span>
+                  </Tooltip>
+                </span>
+                <span className="skill-value">{val}</span>
+              </div>
             )
           })}
         </div>
@@ -673,6 +728,50 @@ export function CharacterSheet() {
           color: var(--color-text-muted);
           font-size: 0.85rem;
           margin-top: 2px;
+        }
+
+        /* Buttons for level-up actions */
+        .btn {
+          padding: var(--space-sm) var(--space-lg);
+          border-radius: var(--radius-md);
+          border: 1px solid var(--color-border);
+          background: var(--color-bg-surface);
+          color: var(--color-text);
+          font-size: 1rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .btn:hover:not(:disabled) {
+          border-color: var(--color-accent);
+        }
+        .btn:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
+        .btn-primary {
+          background: var(--color-accent);
+          color: #1a1a2e;
+          border-color: var(--color-accent);
+          font-weight: 600;
+        }
+        .btn-primary:hover:not(:disabled) {
+          background: var(--color-accent-hover);
+          border-color: var(--color-accent-hover);
+        }
+        .btn-back {
+          background: none;
+          border: none;
+          color: var(--color-text-muted);
+        }
+        .btn-back:hover {
+          color: var(--color-text);
+        }
+        .info-box {
+          background: var(--color-bg-card);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-md);
+          padding: var(--space-md);
         }
       `}</style>
     </div>

@@ -386,6 +386,22 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
               chosenCompetencies={state.compNames}
               claseId={draft.clase}
               vocacionId={draft.vocacion}
+              oculto={(() => {
+                const basePsi = (draft.donIluminacion === 'psi' || draft.especie === 'ur-ukar') ? 1 : 0
+                const baseTeurgia = draft.donIluminacion === 'teurgia' ? 1 : 0
+                if (!basePsi && !baseTeurgia) return undefined
+                // Accumulate psi/teurgia from previous levels
+                let cumPsi = basePsi
+                let cumTeurgia = baseTeurgia
+                for (let j = 0; j < i; j++) {
+                  const prev = levelChoices[j]
+                  if (prev) {
+                    cumPsi += prev.psiBonus ?? 0
+                    cumTeurgia += prev.teurgiaBonus ?? 0
+                  }
+                }
+                return { psi: cumPsi, ansia: 0, teurgia: cumTeurgia, hubris: 0 }
+              })()}
             />
           ) : null
         })}

@@ -12,6 +12,13 @@ import type { LevelUpChoice } from './creatorTypes'
 import { getLevelBudget } from './creatorTypes'
 import type { CharacteristicKey, SkillKey, Characteristics, Skills } from '@/types/character'
 
+interface OcultoState {
+  psi: number
+  ansia: number
+  teurgia: number
+  hubris: number
+}
+
 interface LevelUpPanelProps {
   choice: LevelUpChoice
   onChange: (updated: LevelUpChoice) => void
@@ -23,6 +30,8 @@ interface LevelUpPanelProps {
   chosenCompetencies: string[]
   claseId: string
   vocacionId: string
+  /** Oculto state (cumulative before this level) for Psi/Teurgia distribution */
+  oculto?: OcultoState
 }
 
 export function LevelUpPanel({
@@ -33,6 +42,7 @@ export function LevelUpPanel({
   chosenCompetencies,
   claseId,
   vocacionId,
+  oculto,
 }: LevelUpPanelProps) {
   const [open, setOpen] = useState(true)
 
@@ -43,9 +53,18 @@ export function LevelUpPanel({
   const selectedClass = CLASSES.find(c => c.id === claseId)
   const selectedVocation = VOCATIONS.find(v => v.id === vocacionId)
 
-  // --- Characteristic distribution ---
+  // --- Characteristic distribution (includes psi/teurgia from same budget) ---
   const charTotal = Object.values(choice.charBonuses).reduce((s, v) => s + (v ?? 0), 0)
+    + (choice.psiBonus ?? 0) + (choice.teurgiaBonus ?? 0)
   const charRemaining = budget.charPoints - charTotal
+
+  // --- Psi/Teurgia availability ---
+  const hasPsi = (oculto?.psi ?? 0) > 0
+  const hasTeurgia = (oculto?.teurgia ?? 0) > 0
+  const currentPsi = (oculto?.psi ?? 0) + (choice.psiBonus ?? 0)
+  const currentTeurgia = (oculto?.teurgia ?? 0) + (choice.teurgiaBonus ?? 0)
+  const maxPsi = 10 - (oculto?.ansia ?? 0)
+  const maxTeurgia = 10 - (oculto?.hubris ?? 0)
 
   // --- Skill distribution ---
   const skillTotal = Object.values(choice.skillBonuses).reduce((s, v) => s + (v ?? 0), 0)
@@ -126,9 +145,11 @@ export function LevelUpPanel({
                 const canRemove = added > 0
                 return (
                   <div key={c.key} className="redist-row">
-                    <Tooltip text={CHARACTERISTIC_TOOLTIPS[c.key]}>
-                      <span className="redist-name">{c.nombre} ({c.abreviatura})</span>
-                    </Tooltip>
+                    <span className="redist-name">
+                      <Tooltip text={CHARACTERISTIC_TOOLTIPS[c.key]}>
+                        <span>{c.nombre} ({c.abreviatura})</span>
+                      </Tooltip>
+                    </span>
                     <span className="redist-val">{baseVal}</span>
                     <button
                       className="redist-btn"
@@ -148,6 +169,67 @@ export function LevelUpPanel({
                 )
               })}
             </div>
+            {/* Psi / Teurgia (same char point budget) */}
+            {(hasPsi || hasTeurgia) && (
+              <div className="redist-grid" style={{ marginTop: 'var(--space-xs)' }}>
+                {hasPsi && (() => {
+                  const basePsi = oculto?.psi ?? 0
+                  const added = choice.psiBonus ?? 0
+                  const canAdd = charRemaining > 0 && currentPsi < maxPsi
+                  const canRemove = added > 0
+                  return (
+                    <div className="redist-row">
+                      <span className="redist-name" style={{ color: 'var(--color-accent)' }}>
+                        Psi <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(max {maxPsi}, Ansia {oculto?.ansia ?? 0})</span>
+                      </span>
+                      <span className="redist-val">{basePsi}</span>
+                      <button
+                        className="redist-btn"
+                        disabled={!canRemove}
+                        onClick={() => onChange({ ...choice, psiBonus: added - 1 })}
+                        type="button"
+                      >{'\u2212'}</button>
+                      <span className={`redist-added ${added > 0 ? 'has-added' : ''}`}>+{added}</span>
+                      <button
+                        className="redist-btn"
+                        disabled={!canAdd}
+                        onClick={() => onChange({ ...choice, psiBonus: added + 1 })}
+                        type="button"
+                      >+</button>
+                      <span className="redist-total">{currentPsi}</span>
+                    </div>
+                  )
+                })()}
+                {hasTeurgia && (() => {
+                  const baseTeurgia = oculto?.teurgia ?? 0
+                  const added = choice.teurgiaBonus ?? 0
+                  const canAdd = charRemaining > 0 && currentTeurgia < maxTeurgia
+                  const canRemove = added > 0
+                  return (
+                    <div className="redist-row">
+                      <span className="redist-name" style={{ color: 'var(--color-accent)' }}>
+                        Teurgia <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(max {maxTeurgia}, Hubris {oculto?.hubris ?? 0})</span>
+                      </span>
+                      <span className="redist-val">{baseTeurgia}</span>
+                      <button
+                        className="redist-btn"
+                        disabled={!canRemove}
+                        onClick={() => onChange({ ...choice, teurgiaBonus: added - 1 })}
+                        type="button"
+                      >{'\u2212'}</button>
+                      <span className={`redist-added ${added > 0 ? 'has-added' : ''}`}>+{added}</span>
+                      <button
+                        className="redist-btn"
+                        disabled={!canAdd}
+                        onClick={() => onChange({ ...choice, teurgiaBonus: added + 1 })}
+                        type="button"
+                      >+</button>
+                      <span className="redist-total">{currentTeurgia}</span>
+                    </div>
+                  )
+                })()}
+              </div>
+            )}
           </div>
 
           {/* Skill points */}
@@ -167,12 +249,14 @@ export function LevelUpPanel({
                 const canRemove = added > 0
                 return (
                   <div key={s.key} className="redist-row">
-                    <Tooltip text={SKILL_TOOLTIPS[s.key]}>
-                      <span className="redist-name">
-                        {s.nombre}
-                        {s.restringida && <span className="skill-restricted"> (R)</span>}
-                      </span>
-                    </Tooltip>
+                    <span className="redist-name">
+                      <Tooltip text={SKILL_TOOLTIPS[s.key]}>
+                        <span>
+                          {s.nombre}
+                          {s.restringida && <span className="skill-restricted"> (R)</span>}
+                        </span>
+                      </Tooltip>
+                    </span>
                     <span className="redist-val">{baseVal}</span>
                     <button
                       className="redist-btn"
@@ -414,6 +498,38 @@ export function LevelUpPanel({
           color: var(--color-danger);
           font-size: 0.75rem;
         }
+
+        /* Choice buttons (self-contained for use outside wizard) */
+        .levelup-panel .choice-options {
+          display: flex;
+          flex-wrap: wrap;
+          gap: var(--space-sm);
+        }
+        .levelup-panel .choice-btn {
+          padding: var(--space-xs) var(--space-md);
+          border: 1px solid var(--color-border);
+          border-radius: var(--radius-sm);
+          background: var(--color-bg-surface);
+          color: var(--color-text);
+          font-size: 0.9rem;
+          cursor: pointer;
+          transition: all 0.15s;
+          min-height: 36px;
+        }
+        .levelup-panel .choice-btn:hover {
+          border-color: var(--color-accent);
+        }
+        .levelup-panel .choice-btn.chosen {
+          border-color: var(--color-accent);
+          background: rgba(196, 163, 90, 0.15);
+          color: var(--color-accent);
+        }
+        .levelup-panel .choice-group-label {
+          font-size: 0.85rem;
+          color: var(--color-text-muted);
+          margin-bottom: var(--space-xs);
+          font-weight: 500;
+        }
       `}</style>
     </div>
   )
@@ -423,6 +539,7 @@ export function LevelUpPanel({
 export function isLevelUpComplete(choice: LevelUpChoice): boolean {
   const budget = getLevelBudget(choice.level)
   const charTotal = Object.values(choice.charBonuses).reduce((s, v) => s + (v ?? 0), 0)
+    + (choice.psiBonus ?? 0) + (choice.teurgiaBonus ?? 0)
   const skillTotal = Object.values(choice.skillBonuses).reduce((s, v) => s + (v ?? 0), 0)
 
   const compSubChoice = choice.competency ? getSubChoice(choice.competency) : null
