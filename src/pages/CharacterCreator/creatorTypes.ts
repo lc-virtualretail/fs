@@ -57,6 +57,7 @@ export const STEPS = [
   'faction',
   'vocation',
   'customization',
+  'levelup',
   'summary',
 ] as const
 
@@ -69,6 +70,7 @@ export const STEP_LABELS: Record<StepId, string> = {
   faction: 'Facción',
   vocation: 'Vocación',
   customization: 'Personalización',
+  levelup: 'Niveles',
   summary: 'Resumen',
 }
 
@@ -142,6 +144,7 @@ export interface CharacterDraft {
   _snapshotPreFaccion?: StepSnapshot
   _snapshotPreVocacion?: StepSnapshot
   _snapshotPreCustomization?: StepSnapshot
+  _snapshotPreLevelUp?: StepSnapshot
 }
 
 export function createEmptyDraft(): CharacterDraft {
