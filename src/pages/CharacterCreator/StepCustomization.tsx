@@ -51,10 +51,14 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
   // Excess redistribution computation (level 1, max = 8)
   const maxVal = getMaxStatValue(1)
 
+  // Compute excess from baseSnapshot (not draft) so backtracking works correctly
+  const snapshotCharsForExcess = baseSnapshot.caracteristicas
+  const snapshotSkillsForExcess = baseSnapshot.habilidades
+
   const charExcess = useMemo(() => {
     let total = 0
     const overKeys: { key: CharacteristicKey; over: number }[] = []
-    for (const [key, val] of Object.entries(draft.caracteristicas)) {
+    for (const [key, val] of Object.entries(snapshotCharsForExcess)) {
       if (val > maxVal) {
         const over = val - maxVal
         total += over
@@ -62,12 +66,12 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
       }
     }
     return { total, overKeys }
-  }, [draft.caracteristicas, maxVal])
+  }, [snapshotCharsForExcess, maxVal])
 
   const skillExcess = useMemo(() => {
     let total = 0
     const overKeys: { key: SkillKey; over: number }[] = []
-    for (const [key, val] of Object.entries(draft.habilidades)) {
+    for (const [key, val] of Object.entries(snapshotSkillsForExcess)) {
       if (val > maxVal) {
         const over = val - maxVal
         total += over
@@ -75,7 +79,7 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
       }
     }
     return { total, overKeys }
-  }, [draft.habilidades, maxVal])
+  }, [snapshotSkillsForExcess, maxVal])
 
   const hasExcess = charExcess.total > 0 || skillExcess.total > 0
   const charRedistTotal = Object.values(charRedist).reduce((s, v) => s + (v ?? 0), 0)
@@ -538,14 +542,14 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
               <div style={{ marginBottom: 'var(--space-sm)', fontSize: '0.85rem', color: 'var(--color-danger)' }}>
                 Exceso en: {charExcess.overKeys.map(e => {
                   const meta = CHARACTERISTICS.find(c => c.key === e.key)
-                  return `${meta?.nombre ?? e.key} (${draft.caracteristicas[e.key]} → ${maxVal}, +${e.over})`
+                  return `${meta?.nombre ?? e.key} (${snapshotCharsForExcess[e.key]} → ${maxVal}, +${e.over})`
                 }).join(', ')}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
                 {CHARACTERISTICS.filter(c => !charExcess.overKeys.some(e => e.key === c.key))
-                  .filter(c => (draft.caracteristicas[c.key] + (charRedist[c.key] ?? 0)) < maxVal)
+                  .filter(c => (snapshotCharsForExcess[c.key] + (charRedist[c.key] ?? 0)) < maxVal)
                   .map(c => {
-                    const current = draft.caracteristicas[c.key] + (charRedist[c.key] ?? 0)
+                    const current = snapshotCharsForExcess[c.key] + (charRedist[c.key] ?? 0)
                     return (
                       <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 160 }}>
                         <span style={{ fontSize: '0.85rem', minWidth: 80 }}>{c.nombre} ({current})</span>
@@ -576,14 +580,14 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
               <div style={{ marginBottom: 'var(--space-sm)', fontSize: '0.85rem', color: 'var(--color-danger)' }}>
                 Exceso en: {skillExcess.overKeys.map(e => {
                   const meta = SKILLS.find(s => s.key === e.key)
-                  return `${meta?.nombre ?? e.key} (${draft.habilidades[e.key]} → ${maxVal}, +${e.over})`
+                  return `${meta?.nombre ?? e.key} (${snapshotSkillsForExcess[e.key]} → ${maxVal}, +${e.over})`
                 }).join(', ')}
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
                 {SKILLS.filter(s => !skillExcess.overKeys.some(e => e.key === s.key))
-                  .filter(s => (draft.habilidades[s.key] + (skillRedist[s.key] ?? 0)) < maxVal)
+                  .filter(s => (snapshotSkillsForExcess[s.key] + (skillRedist[s.key] ?? 0)) < maxVal)
                   .map(s => {
-                    const current = draft.habilidades[s.key] + (skillRedist[s.key] ?? 0)
+                    const current = snapshotSkillsForExcess[s.key] + (skillRedist[s.key] ?? 0)
                     return (
                       <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 200 }}>
                         <span style={{ fontSize: '0.85rem', minWidth: 120 }}>{s.nombre} ({current})</span>

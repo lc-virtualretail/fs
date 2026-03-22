@@ -29,6 +29,12 @@ export function StepSummary({ draft, goBack }: Props) {
 
   const nivel = draft.nivelObjetivo || 1
 
+  // Compute final occult values (species + level-up bonuses)
+  const finalPsi = (draft.donIluminacion === 'psi' || draft.especie === 'ur-ukar' ? 1 : 0)
+    + (draft.levelUpChoices ?? []).reduce((s, lc) => s + (lc.psiBonus ?? 0), 0)
+  const finalTeurgia = (draft.donIluminacion === 'teurgia' ? 1 : 0)
+    + (draft.levelUpChoices ?? []).reduce((s, lc) => s + (lc.teurgiaBonus ?? 0), 0)
+
   const finalChars = draft.caracteristicas
   const finalSkills = draft.habilidades
 
@@ -192,15 +198,15 @@ export function StepSummary({ draft, goBack }: Props) {
         <section className="summary-section">
           <h3 className="summary-heading">Oculto</h3>
           <div className="summary-grid">
-            {(draft.donIluminacion === 'psi' || draft.especie === 'ur-ukar') && (
+            {finalPsi > 0 && (
               <>
-                <SummaryRow label="Psi" value="1" />
+                <SummaryRow label="Psi" value={String(finalPsi)} />
                 <SummaryRow label="Ansia" value="0" />
               </>
             )}
-            {draft.donIluminacion === 'teurgia' && (
+            {finalTeurgia > 0 && (
               <>
-                <SummaryRow label="Teurgia" value="1" />
+                <SummaryRow label="Teurgia" value={String(finalTeurgia)} />
                 <SummaryRow label="Hubris" value="0" />
               </>
             )}
