@@ -193,6 +193,7 @@ export function StepLevelUp({ draft, updateDraft, goNext, goBack }: StepProps) {
               baseChars={state.chars}
               baseSkills={state.skills}
               chosenCompetencies={state.compNames}
+              chosenBenefits={state.benefitNames}
               claseId={draft.clase}
               vocacionId={draft.vocacion}
               oculto={(() => {

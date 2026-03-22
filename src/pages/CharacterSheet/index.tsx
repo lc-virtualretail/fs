@@ -208,6 +208,7 @@ export function CharacterSheet() {
             baseChars={character.caracteristicas}
             baseSkills={character.habilidades}
             chosenCompetencies={character.competencias.map(c => c.nombre)}
+            chosenBenefits={character.beneficios.map(b => b.nombre)}
             claseId={character.clase}
             vocacionId={character.vocacion}
             oculto={character.oculto}

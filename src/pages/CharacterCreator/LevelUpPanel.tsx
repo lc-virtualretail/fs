@@ -20,6 +20,13 @@ interface OcultoState {
   hubris: number
 }
 
+// Benefits that can be taken multiple times (they represent ranks or accumulate)
+const STACKABLE_BENEFITS = new Set([
+  'Título Nobiliario', 'Ordenación Religiosa', 'Cargo Gremial',
+  'Rango Militar', 'Riqueza', 'Rango de Derviche',
+  'Poderes Psíquicos', 'Ritos Teúrgicos', // meta-benefits: each pick is a different power/rite
+])
+
 interface LevelUpPanelProps {
   choice: LevelUpChoice
   onChange: (updated: LevelUpChoice) => void
@@ -29,6 +36,8 @@ interface LevelUpPanelProps {
   baseSkills: Skills
   /** All competency names already chosen (base + previous levels) */
   chosenCompetencies: string[]
+  /** All benefit names already chosen (base + previous levels) */
+  chosenBenefits: string[]
   claseId: string
   vocacionId: string
   /** Oculto state (cumulative before this level) for Psi/Teurgia distribution */
@@ -45,6 +54,7 @@ export function LevelUpPanel({
   baseChars,
   baseSkills,
   chosenCompetencies,
+  chosenBenefits,
   claseId,
   vocacionId,
   oculto,
@@ -353,12 +363,15 @@ export function LevelUpPanel({
                 const isSelected = isMetaBenefit
                   ? choice.vocationBenefit.startsWith(b + ': ')
                   : choice.vocationBenefit === b
+                const alreadyChosen = !STACKABLE_BENEFITS.has(b) && chosenBenefits.includes(b)
                 return (
                   <Tooltip key={b} text={BENEFIT_TOOLTIPS[b]}>
                     <button
-                      className={`choice-btn ${isSelected ? 'chosen' : ''}`}
-                      onClick={() => onChange({ ...choice, vocationBenefit: isMetaBenefit ? b + ': ' : b })}
+                      className={`choice-btn ${isSelected ? 'chosen' : ''} ${alreadyChosen ? 'disabled-benefit' : ''}`}
+                      onClick={() => !alreadyChosen && onChange({ ...choice, vocationBenefit: isMetaBenefit ? b + ': ' : b })}
                       type="button"
+                      disabled={alreadyChosen}
+                      style={alreadyChosen ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
                     >
                       {b}
                     </button>
@@ -382,16 +395,21 @@ export function LevelUpPanel({
                       <div key={senda} style={{ marginBottom: 'var(--space-sm)' }}>
                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 2 }}>{senda}</div>
                         <div className="choice-options" style={{ flexWrap: 'wrap' }}>
-                          {powers.map(p => (
-                            <button
-                              key={p.nombre}
-                              className={`choice-btn ${selectedPower === p.nombre ? 'chosen' : ''}`}
-                              onClick={() => onChange({ ...choice, vocationBenefit: `Poderes Psíquicos: ${p.nombre}` })}
-                              type="button"
-                            >
-                              {p.nombre} <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(Psi {p.requisitoPsi})</span>
-                            </button>
-                          ))}
+                          {powers.map(p => {
+                            const powerAlreadyChosen = chosenBenefits.includes(`Poderes Psíquicos: ${p.nombre}`)
+                            return (
+                              <button
+                                key={p.nombre}
+                                className={`choice-btn ${selectedPower === p.nombre ? 'chosen' : ''}`}
+                                onClick={() => !powerAlreadyChosen && onChange({ ...choice, vocationBenefit: `Poderes Psíquicos: ${p.nombre}` })}
+                                type="button"
+                                disabled={powerAlreadyChosen}
+                                style={powerAlreadyChosen ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+                              >
+                                {p.nombre} <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(Psi {p.requisitoPsi})</span>
+                              </button>
+                            )
+                          })}
                         </div>
                       </div>
                     )
@@ -420,16 +438,21 @@ export function LevelUpPanel({
                       <div key={cat} style={{ marginBottom: 'var(--space-sm)' }}>
                         <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 2 }}>{cat}</div>
                         <div className="choice-options" style={{ flexWrap: 'wrap' }}>
-                          {rites.map(r => (
-                            <button
-                              key={r.nombre}
-                              className={`choice-btn ${selectedRite === r.nombre ? 'chosen' : ''}`}
-                              onClick={() => onChange({ ...choice, vocationBenefit: `Ritos Teúrgicos: ${r.nombre}` })}
-                              type="button"
-                            >
-                              {r.nombre} <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(T {r.requisitoTeurgia})</span>
-                            </button>
-                          ))}
+                          {rites.map(r => {
+                            const riteAlreadyChosen = chosenBenefits.includes(`Ritos Teúrgicos: ${r.nombre}`)
+                            return (
+                              <button
+                                key={r.nombre}
+                                className={`choice-btn ${selectedRite === r.nombre ? 'chosen' : ''}`}
+                                onClick={() => !riteAlreadyChosen && onChange({ ...choice, vocationBenefit: `Ritos Teúrgicos: ${r.nombre}` })}
+                                type="button"
+                                disabled={riteAlreadyChosen}
+                                style={riteAlreadyChosen ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+                              >
+                                {r.nombre} <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(T {r.requisitoTeurgia})</span>
+                              </button>
+                            )
+                          })}
                         </div>
                       </div>
                     )
@@ -449,17 +472,22 @@ export function LevelUpPanel({
             <div className="levelup-section">
               <h4 className="levelup-section-title">Beneficio de clase</h4>
               <div className="choice-options" style={{ flexWrap: 'wrap' }}>
-                {classBenefits.map(b => (
-                  <Tooltip key={b} text={BENEFIT_TOOLTIPS[b]}>
-                    <button
-                      className={`choice-btn ${choice.classBenefit === b ? 'chosen' : ''}`}
-                      onClick={() => onChange({ ...choice, classBenefit: b })}
-                      type="button"
-                    >
-                      {b}
-                    </button>
-                  </Tooltip>
-                ))}
+                {classBenefits.map(b => {
+                  const alreadyChosen = !STACKABLE_BENEFITS.has(b) && chosenBenefits.includes(b)
+                  return (
+                    <Tooltip key={b} text={BENEFIT_TOOLTIPS[b]}>
+                      <button
+                        className={`choice-btn ${choice.classBenefit === b ? 'chosen' : ''}`}
+                        onClick={() => !alreadyChosen && onChange({ ...choice, classBenefit: b })}
+                        type="button"
+                        disabled={alreadyChosen}
+                        style={alreadyChosen ? { opacity: 0.4, cursor: 'not-allowed' } : undefined}
+                      >
+                        {b}
+                      </button>
+                    </Tooltip>
+                  )
+                })}
               </div>
             </div>
           )}
