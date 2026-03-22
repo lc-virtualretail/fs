@@ -563,6 +563,8 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
                 }
                 return { psi: cumPsi, ansia: 0, teurgia: cumTeurgia, hubris: 0 }
               })()}
+              especieId={draft.especie}
+              donIluminacion={draft.donIluminacion}
             />
           ) : null
         })}

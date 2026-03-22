@@ -33,6 +33,10 @@ interface LevelUpPanelProps {
   vocacionId: string
   /** Oculto state (cumulative before this level) for Psi/Teurgia distribution */
   oculto?: OcultoState
+  /** Species ID for occult access (Ur-obun/Ur-ukar get powers without occult vocation) */
+  especieId?: string
+  /** Don de la iluminación choice ('psi' | 'teurgia') */
+  donIluminacion?: string
 }
 
 export function LevelUpPanel({
@@ -44,6 +48,8 @@ export function LevelUpPanel({
   claseId,
   vocacionId,
   oculto,
+  especieId,
+  donIluminacion,
 }: LevelUpPanelProps) {
   const [open, setOpen] = useState(true)
 
@@ -80,14 +86,23 @@ export function LevelUpPanel({
   })
 
   // --- Benefits ---
-  const vocationBenefits = selectedVocation?.carrera.beneficios ?? []
+  const baseVocationBenefits = selectedVocation?.carrera.beneficios ?? []
+  // Ur-obun/Ur-ukar have access to occult benefits without needing an occult vocation
+  const occultAccess: string[] = []
+  if ((donIluminacion === 'psi' || especieId === 'ur-ukar') && !baseVocationBenefits.includes('Poderes Psíquicos')) {
+    occultAccess.push('Poderes Psíquicos')
+  }
+  if (donIluminacion === 'teurgia' && !baseVocationBenefits.includes('Ritos Teúrgicos')) {
+    occultAccess.push('Ritos Teúrgicos')
+  }
+  const vocationBenefits = [...baseVocationBenefits, ...occultAccess]
   const classBenefits = selectedClass?.educacion.beneficiosDeClase ?? []
 
   // --- Completion check ---
   const charComplete = charRemaining === 0
   const skillComplete = skillRemaining === 0
   const compComplete = choice.competency !== '' && (compSubChoice === null || !!choice.competencySub)
-  const vocBenComplete = choice.vocationBenefit !== ''
+  const vocBenComplete = choice.vocationBenefit !== '' && !choice.vocationBenefit.endsWith(': ')
   const clsBenComplete = !budget.hasClassBenefit || choice.classBenefit !== ''
   const isComplete = charComplete && skillComplete && compComplete && vocBenComplete && clsBenComplete
 

@@ -211,6 +211,13 @@ export function CharacterSheet() {
             claseId={character.clase}
             vocacionId={character.vocacion}
             oculto={character.oculto}
+            especieId={character.especie}
+            donIluminacion={
+              character.especie === 'ur-ukar' ? 'psi'
+                : character.especie === 'ur-obun'
+                  ? (character.oculto.psi > 0 ? 'psi' : character.oculto.teurgia > 0 ? 'teurgia' : '')
+                  : ''
+            }
           />
           {/* Derived stats preview */}
           {(() => {
