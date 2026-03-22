@@ -2,12 +2,15 @@ import { useState, useMemo } from 'react'
 import { CLASSES } from '@/data/classes'
 import { VOCATIONS } from '@/data/vocations'
 import { ALL_COMPETENCIES } from '@/data/competencies'
+import { CHARACTERISTICS } from '@/data/characteristics'
+import { SKILLS } from '@/data/skills'
+import { getMaxStatValue } from '@/engine/derived'
 import type { StepProps } from './creatorTypes'
 import { createEmptyLevelUpChoice } from './creatorTypes'
 import type { LevelUpChoice } from './creatorTypes'
 import type { CharacteristicKey, SkillKey, Characteristics, Skills } from '@/types/character'
 import { getSubChoice, getDisplayLabel, resolveWithSub } from './competencyUtils'
-import { LevelUpPanel, isLevelUpComplete } from './LevelUpPanel'
+import { LevelUpPanel } from './LevelUpPanel'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { BENEFIT_TOOLTIPS, COMPETENCY_TOOLTIPS } from '@/data/tooltips'
 import { PSYCHIC_POWERS, PSYCHIC_PATHS, THEURGIC_RITES, THEURGIC_CATEGORIES } from '@/data/occultPowers'
@@ -44,6 +47,10 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
       : []
   )
 
+  // Excess redistribution state
+  const [charRedist, setCharRedist] = useState<Partial<Record<CharacteristicKey, number>>>({})
+  const [skillRedist, setSkillRedist] = useState<Partial<Record<SkillKey, number>>>({})
+
   // Snapshot: species+class+faction+vocation state (saved by StepVocation). Stable base for backtracking.
   const [baseSnapshot] = useState(() => draft._snapshotPreCustomization ?? {
     caracteristicas: { ...draft.caracteristicas },
@@ -51,6 +58,42 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
     competencias: [...draft.competencias],
     beneficios: [...draft.beneficios],
   })
+
+  // Excess redistribution computation (level 1, max = 8)
+  const maxVal = getMaxStatValue(1)
+
+  const charExcess = useMemo(() => {
+    let total = 0
+    const overKeys: { key: CharacteristicKey; over: number }[] = []
+    for (const [key, val] of Object.entries(draft.caracteristicas)) {
+      if (val > maxVal) {
+        const over = val - maxVal
+        total += over
+        overKeys.push({ key: key as CharacteristicKey, over })
+      }
+    }
+    return { total, overKeys }
+  }, [draft.caracteristicas, maxVal])
+
+  const skillExcess = useMemo(() => {
+    let total = 0
+    const overKeys: { key: SkillKey; over: number }[] = []
+    for (const [key, val] of Object.entries(draft.habilidades)) {
+      if (val > maxVal) {
+        const over = val - maxVal
+        total += over
+        overKeys.push({ key: key as SkillKey, over })
+      }
+    }
+    return { total, overKeys }
+  }, [draft.habilidades, maxVal])
+
+  const hasExcess = charExcess.total > 0 || skillExcess.total > 0
+  const charRedistTotal = Object.values(charRedist).reduce((s, v) => s + (v ?? 0), 0)
+  const skillRedistTotal = Object.values(skillRedist).reduce((s, v) => s + (v ?? 0), 0)
+  const charRedistRemaining = charExcess.total - charRedistTotal
+  const skillRedistRemaining = skillExcess.total - skillRedistTotal
+  const excessFullyDistributed = !hasExcess || (charRedistRemaining === 0 && skillRedistRemaining === 0)
 
   // Get all available benefits (class + vocation + free)
   const selectedClass = CLASSES.find(c => c.id === draft.clase)
@@ -174,8 +217,6 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
     return states
   }, [baseSnapshot, draft.caracteristicas, draft.habilidades, levelChoices, resolvedFreeComp, freeBenefit, affliction, extraBenefit])
 
-  const allLevelsComplete = levelChoices.every(isLevelUpComplete)
-
   function handleNext() {
     const newComps = [...baseSnapshot.competencias]
     if (resolvedFreeComp) {
@@ -205,6 +246,22 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
     const snapshotSkills = (baseSnapshot as { habilidades?: Skills }).habilidades ?? draft.habilidades
     const finalChars = { ...snapshotChars }
     const finalSkills = { ...snapshotSkills }
+
+    // Apply excess redistribution
+    if (hasExcess) {
+      for (const { key } of charExcess.overKeys) {
+        finalChars[key as CharacteristicKey] = maxVal
+      }
+      for (const [key, val] of Object.entries(charRedist)) {
+        if (val) finalChars[key as CharacteristicKey] += val
+      }
+      for (const { key } of skillExcess.overKeys) {
+        finalSkills[key as SkillKey] = maxVal
+      }
+      for (const [key, val] of Object.entries(skillRedist)) {
+        if (val) finalSkills[key as SkillKey] += val
+      }
+    }
 
     for (const lc of levelChoices) {
       for (const [key, val] of Object.entries(lc.charBonuses)) {
@@ -248,6 +305,12 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
       extraBenefit,
       nivelObjetivo: targetLevel,
       levelUpChoices: levelChoices,
+      _snapshotPreLevelUp: {
+        caracteristicas: { ...finalChars },
+        habilidades: { ...finalSkills },
+        competencias: [...newComps],
+        beneficios: [...newBenefits],
+      },
     })
     goNext()
   }
@@ -255,7 +318,7 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
   const freeCompComplete = freeComp !== '' && (freeCompSubChoice === null || !!freeCompSub)
   // Meta-benefits must have a sub-selection (not just "Poderes Psíquicos: ")
   const freeBenefitComplete = freeBenefit !== '' && !freeBenefit.endsWith(': ')
-  const canProceed = freeCompComplete && freeBenefitComplete && allLevelsComplete
+  const canProceed = freeCompComplete && freeBenefitComplete && excessFullyDistributed
 
   return (
     <div>
@@ -633,6 +696,93 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
           )}
         </div>
       </div>
+
+      {/* Excess redistribution */}
+      {hasExcess && (
+        <div className="step-section">
+          <h3>Redistribución de Exceso</h3>
+          <div className="info-box warning-box" style={{ marginBottom: 'var(--space-md)' }}>
+            Algunas puntuaciones superan el máximo de {maxVal} para nivel 1.
+            Redistribuye los puntos sobrantes a otras características/habilidades.
+          </div>
+
+          {charExcess.total > 0 && (
+            <>
+              <h4 style={{ marginBottom: 'var(--space-sm)' }}>
+                Características — {charRedistRemaining} punto(s) por redistribuir
+              </h4>
+              <div style={{ marginBottom: 'var(--space-sm)', fontSize: '0.85rem', color: 'var(--color-danger)' }}>
+                Exceso en: {charExcess.overKeys.map(e => {
+                  const meta = CHARACTERISTICS.find(c => c.key === e.key)
+                  return `${meta?.nombre ?? e.key} (${draft.caracteristicas[e.key]} → ${maxVal}, +${e.over})`
+                }).join(', ')}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                {CHARACTERISTICS.filter(c => !charExcess.overKeys.some(e => e.key === c.key))
+                  .filter(c => (draft.caracteristicas[c.key] + (charRedist[c.key] ?? 0)) < maxVal)
+                  .map(c => {
+                    const current = draft.caracteristicas[c.key] + (charRedist[c.key] ?? 0)
+                    return (
+                      <div key={c.key} style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 160 }}>
+                        <span style={{ fontSize: '0.85rem', minWidth: 80 }}>{c.nombre} ({current})</span>
+                        <button
+                          className="choice-btn"
+                          style={{ padding: '2px 8px', minHeight: 28 }}
+                          disabled={charRedistRemaining <= 0 || current >= maxVal}
+                          onClick={() => setCharRedist(prev => ({ ...prev, [c.key]: (prev[c.key] ?? 0) + 1 }))}
+                        >+</button>
+                        <button
+                          className="choice-btn"
+                          style={{ padding: '2px 8px', minHeight: 28 }}
+                          disabled={(charRedist[c.key] ?? 0) <= 0}
+                          onClick={() => setCharRedist(prev => ({ ...prev, [c.key]: (prev[c.key] ?? 0) - 1 }))}
+                        >−</button>
+                      </div>
+                    )
+                  })}
+              </div>
+            </>
+          )}
+
+          {skillExcess.total > 0 && (
+            <>
+              <h4 style={{ marginTop: 'var(--space-md)', marginBottom: 'var(--space-sm)' }}>
+                Habilidades — {skillRedistRemaining} punto(s) por redistribuir
+              </h4>
+              <div style={{ marginBottom: 'var(--space-sm)', fontSize: '0.85rem', color: 'var(--color-danger)' }}>
+                Exceso en: {skillExcess.overKeys.map(e => {
+                  const meta = SKILLS.find(s => s.key === e.key)
+                  return `${meta?.nombre ?? e.key} (${draft.habilidades[e.key]} → ${maxVal}, +${e.over})`
+                }).join(', ')}
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
+                {SKILLS.filter(s => !skillExcess.overKeys.some(e => e.key === s.key))
+                  .filter(s => (draft.habilidades[s.key] + (skillRedist[s.key] ?? 0)) < maxVal)
+                  .map(s => {
+                    const current = draft.habilidades[s.key] + (skillRedist[s.key] ?? 0)
+                    return (
+                      <div key={s.key} style={{ display: 'flex', alignItems: 'center', gap: 4, minWidth: 200 }}>
+                        <span style={{ fontSize: '0.85rem', minWidth: 120 }}>{s.nombre} ({current})</span>
+                        <button
+                          className="choice-btn"
+                          style={{ padding: '2px 8px', minHeight: 28 }}
+                          disabled={skillRedistRemaining <= 0 || current >= maxVal}
+                          onClick={() => setSkillRedist(prev => ({ ...prev, [s.key]: (prev[s.key] ?? 0) + 1 }))}
+                        >+</button>
+                        <button
+                          className="choice-btn"
+                          style={{ padding: '2px 8px', minHeight: 28 }}
+                          disabled={(skillRedist[s.key] ?? 0) <= 0}
+                          onClick={() => setSkillRedist(prev => ({ ...prev, [s.key]: (prev[s.key] ?? 0) - 1 }))}
+                        >−</button>
+                      </div>
+                    )
+                  })}
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="step-nav">
         <button className="btn btn-back" onClick={goBack}>← Atrás</button>
