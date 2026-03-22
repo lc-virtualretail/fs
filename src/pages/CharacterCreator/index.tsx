@@ -7,6 +7,7 @@ import { StepClass } from './StepClass'
 import { StepFaction } from './StepFaction'
 import { StepVocation } from './StepVocation'
 import { StepCustomization } from './StepCustomization'
+import { StepLevelUp } from './StepLevelUp'
 import { StepSummary } from './StepSummary'
 
 export function CharacterCreator() {
@@ -43,6 +44,7 @@ export function CharacterCreator() {
       case 'faction': return <StepFaction {...props} />
       case 'vocation': return <StepVocation {...props} />
       case 'customization': return <StepCustomization {...props} />
+      case 'levelup': return <StepLevelUp {...props} />
       case 'summary': return <StepSummary draft={draft} goBack={goBack} />
       default: return null
     }
