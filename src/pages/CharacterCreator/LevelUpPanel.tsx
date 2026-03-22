@@ -369,7 +369,7 @@ export function LevelUpPanel({
             {/* Sub-selection for Poderes Psíquicos */}
             {choice.vocationBenefit.startsWith('Poderes Psíquicos: ') && (() => {
               const selectedPower = choice.vocationBenefit.replace('Poderes Psíquicos: ', '')
-              const currentPsiVal = oculto?.psi ?? 0
+              const currentPsiVal = currentPsi // includes this level's psiBonus
               return (
                 <div style={{ marginTop: 'var(--space-sm)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
                   <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
@@ -407,7 +407,7 @@ export function LevelUpPanel({
             {/* Sub-selection for Ritos Teúrgicos */}
             {choice.vocationBenefit.startsWith('Ritos Teúrgicos: ') && (() => {
               const selectedRite = choice.vocationBenefit.replace('Ritos Teúrgicos: ', '')
-              const currentTeurgiaVal = oculto?.teurgia ?? 0
+              const currentTeurgiaVal = currentTeurgia // includes this level's teurgiaBonus
               return (
                 <div style={{ marginTop: 'var(--space-sm)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
                   <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
