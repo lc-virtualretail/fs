@@ -10,6 +10,7 @@ import { getSubChoice, getDisplayLabel, resolveWithSub } from './competencyUtils
 import { LevelUpPanel, isLevelUpComplete } from './LevelUpPanel'
 import { Tooltip } from '@/components/ui/Tooltip'
 import { BENEFIT_TOOLTIPS, COMPETENCY_TOOLTIPS } from '@/data/tooltips'
+import { PSYCHIC_POWERS, PSYCHIC_PATHS, THEURGIC_RITES, THEURGIC_CATEGORIES } from '@/data/occultPowers'
 
 // Common free benefits available to all characters
 const FREE_BENEFITS = [
@@ -54,15 +55,31 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
   // Get all available benefits (class + vocation + free)
   const selectedClass = CLASSES.find(c => c.id === draft.clase)
   const selectedVocation = VOCATIONS.find(v => v.id === draft.vocacion)
+
+  // Ur-obun/Ur-ukar have access to occult vocation benefits without needing an occult vocation
+  const occultAccessBenefits: string[] = []
+  if (draft.donIluminacion === 'psi' || draft.especie === 'ur-ukar') {
+    occultAccessBenefits.push('Poderes Psíquicos')
+  }
+  if (draft.donIluminacion === 'teurgia') {
+    occultAccessBenefits.push('Ritos Teúrgicos')
+  }
+
   const allBenefits = [
     ...new Set([
       ...FREE_BENEFITS,
       ...(selectedClass?.educacion.beneficiosDeClase ?? []),
       ...(selectedVocation?.carrera.beneficios ?? []),
+      ...occultAccessBenefits,
     ]),
   ].sort()
 
+  // Effective Psi/Teurgia for sub-selection
+  const effectivePsi = (draft.donIluminacion === 'psi' || draft.especie === 'ur-ukar') ? 1 : 0
+  const effectiveTeurgia = draft.donIluminacion === 'teurgia' ? 1 : 0
+
   // Exclude already-chosen benefits (use snapshot base, not draft which may have stale data)
+  // For meta-benefits (Poderes Psíquicos, Ritos Teúrgicos), match by prefix since they store "Poderes Psíquicos: X"
   const chosenBenefitNames = baseSnapshot.beneficios.map(b => b.nombre)
   const availableBenefits = allBenefits.filter(b => !chosenBenefitNames.includes(b))
 
@@ -236,7 +253,9 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
   }
 
   const freeCompComplete = freeComp !== '' && (freeCompSubChoice === null || !!freeCompSub)
-  const canProceed = freeCompComplete && freeBenefit !== '' && allLevelsComplete
+  // Meta-benefits must have a sub-selection (not just "Poderes Psíquicos: ")
+  const freeBenefitComplete = freeBenefit !== '' && !freeBenefit.endsWith(': ')
+  const canProceed = freeCompComplete && freeBenefitComplete && allLevelsComplete
 
   return (
     <div>
@@ -298,17 +317,85 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
           Elige 1 beneficio de cualquier lista (clase, vocación o libre).
         </p>
         <div className="choice-options" style={{ flexWrap: 'wrap' }}>
-          {availableBenefits.map(b => (
-            <Tooltip key={b} text={BENEFIT_TOOLTIPS[b]}>
-              <button
-                className={`choice-btn ${freeBenefit === b ? 'chosen' : ''}`}
-                onClick={() => setFreeBenefit(b)}
-              >
-                {b}
-              </button>
-            </Tooltip>
-          ))}
+          {availableBenefits.map(b => {
+            const isMetaBenefit = b === 'Poderes Psíquicos' || b === 'Ritos Teúrgicos'
+            const isSelected = isMetaBenefit ? freeBenefit.startsWith(b + ': ') : freeBenefit === b
+            return (
+              <Tooltip key={b} text={BENEFIT_TOOLTIPS[b]}>
+                <button
+                  className={`choice-btn ${isSelected ? 'chosen' : ''}`}
+                  onClick={() => setFreeBenefit(isMetaBenefit ? b + ': ' : b)}
+                >
+                  {b}
+                </button>
+              </Tooltip>
+            )
+          })}
         </div>
+        {/* Sub-selection for Poderes Psíquicos */}
+        {freeBenefit.startsWith('Poderes Psíquicos: ') && (() => {
+          const selectedPower = freeBenefit.replace('Poderes Psíquicos: ', '')
+          return (
+            <div style={{ marginTop: 'var(--space-sm)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
+              <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
+                Elige un poder psíquico (Psi actual: {effectivePsi}):
+              </div>
+              {PSYCHIC_PATHS.map(senda => {
+                const powers = PSYCHIC_POWERS.filter(p => p.senda === senda && p.requisitoPsi <= effectivePsi)
+                if (powers.length === 0) return null
+                return (
+                  <div key={senda} style={{ marginBottom: 'var(--space-sm)' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 2 }}>{senda}</div>
+                    <div className="choice-options" style={{ flexWrap: 'wrap' }}>
+                      {powers.map(p => (
+                        <button
+                          key={p.nombre}
+                          className={`choice-btn ${selectedPower === p.nombre ? 'chosen' : ''}`}
+                          onClick={() => setFreeBenefit(`Poderes Psíquicos: ${p.nombre}`)}
+                          type="button"
+                        >
+                          {p.nombre} <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(Psi {p.requisitoPsi})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+        {/* Sub-selection for Ritos Teúrgicos */}
+        {freeBenefit.startsWith('Ritos Teúrgicos: ') && (() => {
+          const selectedRite = freeBenefit.replace('Ritos Teúrgicos: ', '')
+          return (
+            <div style={{ marginTop: 'var(--space-sm)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
+              <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
+                Elige un rito teúrgico (Teúrgia actual: {effectiveTeurgia}):
+              </div>
+              {THEURGIC_CATEGORIES.map(cat => {
+                const rites = THEURGIC_RITES.filter(r => r.categoria === cat && r.requisitoTeurgia <= effectiveTeurgia)
+                if (rites.length === 0) return null
+                return (
+                  <div key={cat} style={{ marginBottom: 'var(--space-sm)' }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 2 }}>{cat}</div>
+                    <div className="choice-options" style={{ flexWrap: 'wrap' }}>
+                      {rites.map(r => (
+                        <button
+                          key={r.nombre}
+                          className={`choice-btn ${selectedRite === r.nombre ? 'chosen' : ''}`}
+                          onClick={() => setFreeBenefit(`Ritos Teúrgicos: ${r.nombre}`)}
+                          type="button"
+                        >
+                          {r.nombre} <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(T {r.requisitoTeurgia})</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
       </div>
 
       {/* Affliction (optional) */}
@@ -341,18 +428,92 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
             <div className="choice-group-label">Beneficio extra (por aflicción):</div>
             <div className="choice-options" style={{ flexWrap: 'wrap' }}>
               {availableBenefits
-                .filter(b => b !== freeBenefit)
-                .map(b => (
-                  <Tooltip key={b} text={BENEFIT_TOOLTIPS[b]}>
-                    <button
-                      className={`choice-btn ${extraBenefit === b ? 'chosen' : ''}`}
-                      onClick={() => setExtraBenefit(b)}
-                    >
-                      {b}
-                    </button>
-                  </Tooltip>
-                ))}
+                .filter(b => {
+                  // Exclude the free benefit (handle meta-benefits by prefix)
+                  if (b === 'Poderes Psíquicos' || b === 'Ritos Teúrgicos') {
+                    return !freeBenefit.startsWith(b + ': ') && freeBenefit !== b
+                  }
+                  return b !== freeBenefit
+                })
+                .map(b => {
+                  const isMetaBenefit = b === 'Poderes Psíquicos' || b === 'Ritos Teúrgicos'
+                  const isSelected = isMetaBenefit ? extraBenefit.startsWith(b + ': ') : extraBenefit === b
+                  return (
+                    <Tooltip key={b} text={BENEFIT_TOOLTIPS[b]}>
+                      <button
+                        className={`choice-btn ${isSelected ? 'chosen' : ''}`}
+                        onClick={() => setExtraBenefit(isMetaBenefit ? b + ': ' : b)}
+                      >
+                        {b}
+                      </button>
+                    </Tooltip>
+                  )
+                })}
             </div>
+            {/* Sub-selection for extra benefit Poderes Psíquicos */}
+            {extraBenefit.startsWith('Poderes Psíquicos: ') && (() => {
+              const selectedPower = extraBenefit.replace('Poderes Psíquicos: ', '')
+              return (
+                <div style={{ marginTop: 'var(--space-sm)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
+                  <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
+                    Elige un poder psíquico (Psi actual: {effectivePsi}):
+                  </div>
+                  {PSYCHIC_PATHS.map(senda => {
+                    const powers = PSYCHIC_POWERS.filter(p => p.senda === senda && p.requisitoPsi <= effectivePsi)
+                    if (powers.length === 0) return null
+                    return (
+                      <div key={senda} style={{ marginBottom: 'var(--space-sm)' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 2 }}>{senda}</div>
+                        <div className="choice-options" style={{ flexWrap: 'wrap' }}>
+                          {powers.map(p => (
+                            <button
+                              key={p.nombre}
+                              className={`choice-btn ${selectedPower === p.nombre ? 'chosen' : ''}`}
+                              onClick={() => setExtraBenefit(`Poderes Psíquicos: ${p.nombre}`)}
+                              type="button"
+                            >
+                              {p.nombre} <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(Psi {p.requisitoPsi})</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
+            {/* Sub-selection for extra benefit Ritos Teúrgicos */}
+            {extraBenefit.startsWith('Ritos Teúrgicos: ') && (() => {
+              const selectedRite = extraBenefit.replace('Ritos Teúrgicos: ', '')
+              return (
+                <div style={{ marginTop: 'var(--space-sm)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
+                  <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
+                    Elige un rito teúrgico (Teúrgia actual: {effectiveTeurgia}):
+                  </div>
+                  {THEURGIC_CATEGORIES.map(cat => {
+                    const rites = THEURGIC_RITES.filter(r => r.categoria === cat && r.requisitoTeurgia <= effectiveTeurgia)
+                    if (rites.length === 0) return null
+                    return (
+                      <div key={cat} style={{ marginBottom: 'var(--space-sm)' }}>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)', marginBottom: 2 }}>{cat}</div>
+                        <div className="choice-options" style={{ flexWrap: 'wrap' }}>
+                          {rites.map(r => (
+                            <button
+                              key={r.nombre}
+                              className={`choice-btn ${selectedRite === r.nombre ? 'chosen' : ''}`}
+                              onClick={() => setExtraBenefit(`Ritos Teúrgicos: ${r.nombre}`)}
+                              type="button"
+                            >
+                              {r.nombre} <span style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>(T {r.requisitoTeurgia})</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )
+            })()}
           </div>
         )}
       </div>
