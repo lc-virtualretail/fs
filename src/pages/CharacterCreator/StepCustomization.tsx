@@ -565,7 +565,7 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
                 {CHARACTERISTICS.filter(c => !charExcess.overKeys.some(e => e.key === c.key))
-                  .filter(c => (snapshotCharsForExcess[c.key] + (charRedist[c.key] ?? 0)) < maxVal)
+                  .filter(c => snapshotCharsForExcess[c.key] < maxVal || (charRedist[c.key] ?? 0) > 0)
                   .map(c => {
                     const current = snapshotCharsForExcess[c.key] + (charRedist[c.key] ?? 0)
                     return (
@@ -603,7 +603,7 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)' }}>
                 {SKILLS.filter(s => !skillExcess.overKeys.some(e => e.key === s.key))
-                  .filter(s => (snapshotSkillsForExcess[s.key] + (skillRedist[s.key] ?? 0)) < maxVal)
+                  .filter(s => snapshotSkillsForExcess[s.key] < maxVal || (skillRedist[s.key] ?? 0) > 0)
                   .map(s => {
                     const current = snapshotSkillsForExcess[s.key] + (skillRedist[s.key] ?? 0)
                     return (
