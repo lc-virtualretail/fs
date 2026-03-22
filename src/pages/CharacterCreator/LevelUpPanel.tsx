@@ -389,7 +389,17 @@ export function LevelUpPanel({
                     Elige un poder psíquico (Psi actual: {currentPsiVal}):
                   </div>
                   {PSYCHIC_PATHS.map(senda => {
-                    const powers = PSYCHIC_POWERS.filter(p => p.senda === senda && p.requisitoPsi <= currentPsiVal)
+                    const sendaPowers = PSYCHIC_POWERS.filter(p => p.senda === senda)
+                    const powers = sendaPowers.filter(p => {
+                      if (p.requisitoPsi > currentPsiVal) return false
+                      // Check prerequisite: must have the previous power in the same senda
+                      const idx = sendaPowers.indexOf(p)
+                      if (idx > 0) {
+                        const prevPower = sendaPowers[idx - 1]
+                        if (prevPower && !chosenBenefits.includes(`Poderes Psíquicos: ${prevPower.nombre}`)) return false
+                      }
+                      return true
+                    })
                     if (powers.length === 0) return null
                     return (
                       <div key={senda} style={{ marginBottom: 'var(--space-sm)' }}>

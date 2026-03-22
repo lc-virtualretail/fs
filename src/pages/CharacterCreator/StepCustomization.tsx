@@ -284,7 +284,16 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
                 Elige un poder psíquico (Psi actual: {effectivePsi}):
               </div>
               {PSYCHIC_PATHS.map(senda => {
-                const powers = PSYCHIC_POWERS.filter(p => p.senda === senda && p.requisitoPsi <= effectivePsi)
+                const sendaPowers = PSYCHIC_POWERS.filter(p => p.senda === senda)
+                const powers = sendaPowers.filter(p => {
+                  if (p.requisitoPsi > effectivePsi) return false
+                  const idx = sendaPowers.indexOf(p)
+                  if (idx > 0) {
+                    const prevPower = sendaPowers[idx - 1]
+                    if (prevPower && !chosenBenefitNames.includes(`Poderes Psíquicos: ${prevPower.nombre}`)) return false
+                  }
+                  return true
+                })
                 if (powers.length === 0) return null
                 return (
                   <div key={senda} style={{ marginBottom: 'var(--space-sm)' }}>
@@ -402,7 +411,16 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
                     Elige un poder psíquico (Psi actual: {effectivePsi}):
                   </div>
                   {PSYCHIC_PATHS.map(senda => {
-                    const powers = PSYCHIC_POWERS.filter(p => p.senda === senda && p.requisitoPsi <= effectivePsi)
+                    const sendaPowers = PSYCHIC_POWERS.filter(p => p.senda === senda)
+                    const powers = sendaPowers.filter(p => {
+                      if (p.requisitoPsi > effectivePsi) return false
+                      const idx = sendaPowers.indexOf(p)
+                      if (idx > 0) {
+                        const prevPower = sendaPowers[idx - 1]
+                        if (prevPower && !chosenBenefitNames.includes(`Poderes Psíquicos: ${prevPower.nombre}`)) return false
+                      }
+                      return true
+                    })
                     if (powers.length === 0) return null
                     return (
                       <div key={senda} style={{ marginBottom: 'var(--space-sm)' }}>

@@ -93,8 +93,8 @@ export function StepLevelUp({ draft, updateDraft, goNext, goBack }: StepProps) {
           ? resolveWithSub(lc.competency, lc.competencySub || undefined)
           : ''
         if (resolvedLvComp) cumComps.push(resolvedLvComp)
-        if (lc.vocationBenefit) cumBenefits.push(lc.vocationBenefit)
-        if (lc.classBenefit) cumBenefits.push(lc.classBenefit)
+        if (lc.vocationBenefit && !lc.vocationBenefit.endsWith(': ')) cumBenefits.push(lc.vocationBenefit)
+        if (lc.classBenefit && !lc.classBenefit.endsWith(': ')) cumBenefits.push(lc.classBenefit)
       }
     }
     return states

@@ -389,7 +389,19 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
                         Elige un poder psíquico (Psi actual: {effectivePsi}):
                       </div>
                       {PSYCHIC_PATHS.map(senda => {
-                        const powers = PSYCHIC_POWERS.filter(p => p.senda === senda && p.requisitoPsi <= effectivePsi)
+                        const sendaPowers = PSYCHIC_POWERS.filter(p => p.senda === senda)
+                        const powers = sendaPowers.filter(p => {
+                          if (p.requisitoPsi > effectivePsi) return false
+                          // Prerequisite: must have the previous power in the senda already chosen
+                          const idx = sendaPowers.indexOf(p)
+                          if (idx > 0) {
+                            const prevPower = sendaPowers[idx - 1]
+                            // At vocation step (level 1, first pick), no previous powers exist,
+                            // so only elemental (first) powers pass this check
+                            if (prevPower && !baseSnapshot.beneficios.some(b => b.nombre === `Poderes Psíquicos: ${prevPower.nombre}`)) return false
+                          }
+                          return true
+                        })
                         if (powers.length === 0) return null
                         return (
                           <div key={senda} style={{ marginBottom: 'var(--space-sm)' }}>
