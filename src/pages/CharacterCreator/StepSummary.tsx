@@ -7,6 +7,7 @@ import { CLASSES } from '@/data/classes'
 import { FACTIONS } from '@/data/factions'
 import { VOCATIONS } from '@/data/vocations'
 import { calcVitality, calcImpulse, calcReanimation, calcBankCapacity, calcUsosMax, calcTecgnosis, calcMentalResistance, calcSpiritualResistance } from '@/engine/derived'
+import { convertEquipmentStrings } from '@/engine/equipmentMatcher'
 import type { Character } from '@/types/character'
 import type { CharacterDraft } from './creatorTypes'
 import { CharacteristicsTable } from './components/CharacteristicsTable'
@@ -56,6 +57,11 @@ export function StepSummary({ draft, goBack }: Props) {
     setSaving(true)
     try {
       const now = new Date().toISOString()
+      const factionData = FACTIONS.find(f => f.id === draft.faccion)
+      const inventario = convertEquipmentStrings(
+        draft.equipoVocacion,
+        factionData?.premioMaterial
+      )
       const character: Character = {
         id: crypto.randomUUID(),
         nombre: draft.nombre,
@@ -117,6 +123,7 @@ export function StepSummary({ draft, goBack }: Props) {
         equipo: [],
         otrasPertenencias: [],
         dinero: { efectivo: 300, recursos: [] },
+        inventario,
         tecgnosis,
         afliccion: draft.afliccion || null,
         notas: '',
