@@ -11,6 +11,7 @@ import { calcVitality, calcImpulse, calcReanimation, calcBankCapacity, calcUsosM
 import { Tooltip } from '@/components/ui/Tooltip'
 import { CHARACTERISTIC_TOOLTIPS, SKILL_TOOLTIPS, COMPETENCY_TOOLTIPS, BENEFIT_TOOLTIPS } from '@/data/tooltips'
 import { buildExportPayload, downloadExport, exportFilename } from '@/utils/characterExportImport'
+import { migrateToInventory } from '@/engine/inventory'
 import { LevelUpPanel, isLevelUpComplete } from '@/pages/CharacterCreator/LevelUpPanel'
 import { createEmptyLevelUpChoice, getLevelBudget } from '@/pages/CharacterCreator/creatorTypes'
 import { resolveWithSub } from '@/pages/CharacterCreator/competencyUtils'
@@ -25,6 +26,7 @@ export function CharacterSheet() {
   const [levelingUp, setLevelingUp] = useState(false)
   const [levelUpChoice, setLevelUpChoice] = useState<LevelUpChoice | null>(null)
   const [saving, setSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState<'ficha' | 'equipo'>('ficha')
 
   useEffect(() => {
     if (!id) {
@@ -39,6 +41,17 @@ export function CharacterSheet() {
           setError('Personaje no encontrado')
         } else {
           setCharacter(char)
+          if (char && !char.inventario) {
+            const inventario = migrateToInventory(char)
+            const migrated = { ...char, inventario, dinero: {
+              ...char.dinero,
+              recursos: (char.dinero.recursos || []).map((r: any) =>
+                'ubicacion' in r ? r : { ...r, ubicacion: '', periodo: 'mensual' as const }
+              ),
+            }}
+            setCharacter(migrated as Character)
+            db.characters.update(char.id, { inventario: migrated.inventario, dinero: migrated.dinero })
+          }
         }
       })
       .catch(() => setError('Error al cargar el personaje'))
@@ -192,6 +205,18 @@ export function CharacterSheet() {
         </div>
       </header>
 
+      <div className="sheet-tabs">
+        <button
+          className={`sheet-tab ${activeTab === 'ficha' ? 'sheet-tab-active' : ''}`}
+          onClick={() => setActiveTab('ficha')}
+        >Ficha</button>
+        <button
+          className={`sheet-tab ${activeTab === 'equipo' ? 'sheet-tab-active' : ''}`}
+          onClick={() => setActiveTab('equipo')}
+        >Equipo</button>
+      </div>
+
+      {activeTab === 'ficha' && (<>
       {/* Level Up Panel */}
       {levelingUp && levelUpChoice && (
         <section className="sheet-section sheet-levelup-section">
@@ -484,21 +509,6 @@ export function CharacterSheet() {
         </section>
       )}
 
-      {/* Equipment */}
-      <section className="sheet-section">
-        <h2>Equipo y Dinero</h2>
-        <div className="sheet-grid">
-          <Row label="Dinero" value={`${character.dinero.efectivo} fénix`} />
-        </div>
-        {character.equipo.length > 0 && (
-          <div style={{ marginTop: 'var(--space-sm)' }}>
-            {character.equipo.map((e, i) => (
-              <div key={i} style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)' }}>{e.nombre}</div>
-            ))}
-          </div>
-        )}
-      </section>
-
       {/* Narrative */}
       {(character.descripcionFisica || character.personalidad || character.trasfondo) && (
         <section className="sheet-section">
@@ -521,6 +531,14 @@ export function CharacterSheet() {
               <p>{character.trasfondo}</p>
             </div>
           )}
+        </section>
+      )}
+      </>)}
+
+      {activeTab === 'equipo' && (
+        <section className="sheet-section">
+          <h2>Equipo</h2>
+          <p style={{ color: 'var(--color-text-muted)' }}>Pestaña de equipo en construcción...</p>
         </section>
       )}
 
@@ -589,6 +607,32 @@ export function CharacterSheet() {
           color: var(--color-text-muted);
           font-size: 0.95rem;
           margin-top: var(--space-xs);
+        }
+
+        .sheet-tabs {
+          display: flex;
+          gap: 0;
+          border-bottom: 2px solid var(--color-border);
+          margin-bottom: var(--space-md);
+        }
+        .sheet-tab {
+          padding: var(--space-sm) var(--space-lg);
+          background: none;
+          border: none;
+          border-bottom: 2px solid transparent;
+          margin-bottom: -2px;
+          color: var(--color-text-muted);
+          font-size: 1rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.15s;
+        }
+        .sheet-tab:hover {
+          color: var(--color-text);
+        }
+        .sheet-tab-active {
+          color: var(--color-accent);
+          border-bottom-color: var(--color-accent);
         }
 
         .sheet-section {
