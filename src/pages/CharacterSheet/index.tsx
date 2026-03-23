@@ -12,6 +12,7 @@ import { Tooltip } from '@/components/ui/Tooltip'
 import { CHARACTERISTIC_TOOLTIPS, SKILL_TOOLTIPS, COMPETENCY_TOOLTIPS, BENEFIT_TOOLTIPS } from '@/data/tooltips'
 import { buildExportPayload, downloadExport, exportFilename } from '@/utils/characterExportImport'
 import { migrateToInventory } from '@/engine/inventory'
+import { EquipmentTab } from './EquipmentTab'
 import { LevelUpPanel, isLevelUpComplete } from '@/pages/CharacterCreator/LevelUpPanel'
 import { createEmptyLevelUpChoice, getLevelBudget } from '@/pages/CharacterCreator/creatorTypes'
 import { resolveWithSub } from '@/pages/CharacterCreator/competencyUtils'
@@ -180,6 +181,13 @@ export function CharacterSheet() {
     } finally {
       setSaving(false)
     }
+  }
+
+  async function handleEquipmentUpdate(updates: Partial<Character>) {
+    if (!character) return
+    const updated = { ...character, ...updates, updatedAt: new Date().toISOString() }
+    await db.characters.update(character.id, { ...updates, updatedAt: updated.updatedAt })
+    setCharacter(updated as Character)
   }
 
   return (
@@ -536,10 +544,7 @@ export function CharacterSheet() {
       </>)}
 
       {activeTab === 'equipo' && (
-        <section className="sheet-section">
-          <h2>Equipo</h2>
-          <p style={{ color: 'var(--color-text-muted)' }}>Pestaña de equipo en construcción...</p>
-        </section>
+        <EquipmentTab character={character} onUpdate={handleEquipmentUpdate} />
       )}
 
       <style>{`
