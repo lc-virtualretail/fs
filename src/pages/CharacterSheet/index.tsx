@@ -82,7 +82,13 @@ export function CharacterSheet() {
   const tecgnosis = calcTecgnosis(character.nivel)
   const resMental = calcMentalResistance(character.beneficios)
   const resEspiritual = calcSpiritualResistance(character.beneficios)
-  const resCorporal = character.armadura?.resistenciaCorporal ?? 0
+  const equippedArmor = (character.inventario ?? []).find(i => i.equipado && i.category === 'armadura')
+  const resCorporal = equippedArmor
+    ? ((equippedArmor.detalles.resistencia as number) ?? 0) + (equippedArmor.calidad === 'excelente' ? 4 : equippedArmor.calidad === 'maestra' ? 2 : equippedArmor.calidad === 'buena' ? 1 : 0)
+    : (character.armadura?.resistenciaCorporal ?? 0)
+  const armorProtections = equippedArmor
+    ? ((equippedArmor.detalles.caracteristicas as string[]) ?? []).filter((s: string) => s.startsWith('Protección'))
+    : []
 
   const nextLevel = character.nivel + 1
 
@@ -415,7 +421,14 @@ export function CharacterSheet() {
           <div className="derived-card">
             <div className="derived-label">Corporal</div>
             <div className="derived-value">{resCorporal}</div>
-            <div className="derived-detail">{character.armadura?.nombre ?? 'Sin armadura'}</div>
+            <div className="derived-detail">
+              {equippedArmor?.nombre ?? character.armadura?.nombre ?? 'Sin armadura'}
+              {armorProtections.length > 0 && (
+                <div style={{ fontSize: '0.65rem', marginTop: 2, color: '#66bb6a' }}>
+                  {armorProtections.join('; ')}
+                </div>
+              )}
+            </div>
           </div>
           <div className="derived-card">
             <div className="derived-label">Mental</div>
