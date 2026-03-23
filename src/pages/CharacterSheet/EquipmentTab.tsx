@@ -76,15 +76,60 @@ function InventorySection({
 }) {
   const { armor, shields, weapons, other } = groupByCategory(items)
 
+  // ─── Equip restriction checks ───
+
+  function getEquipWarnings(item: InventoryItem): string[] {
+    const warnings: string[] = []
+    const equippedEnergyShield = inventario.find(i => i.equipado && i.category === 'escudoEnergia' && i.id !== item.id)
+    const equippedHandShield = inventario.find(i => i.equipado && i.category === 'escudoMano' && i.id !== item.id)
+    const equippedArmor = inventario.find(i => i.equipado && i.category === 'armadura' && i.id !== item.id)
+
+    // Hand shield + energy shield = incompatible
+    if (item.category === 'escudoMano' && equippedEnergyShield) {
+      warnings.push('Escudo de mano impide que el escudo de energía se active')
+    }
+    if (item.category === 'escudoEnergia' && equippedHandShield) {
+      warnings.push('Un escudo de mano equipado impide que el escudo de energía se active')
+    }
+
+    // Armor-energy shield compatibility
+    if (item.category === 'armadura' && equippedEnergyShield) {
+      const compat = (item.detalles.escudoCompatible as string) ?? ''
+      if (!isArmorShieldCompatible(compat, equippedEnergyShield.nombre)) {
+        warnings.push(`Armadura incompatible con ${equippedEnergyShield.nombre} — el escudo no se activará (requiere compat. ${equippedEnergyShield.nombre.includes('batalla') ? 'B' : equippedEnergyShield.nombre.includes('asalto') ? 'A o B' : 'E, A o B'}, armadura tiene ${compat || 'ninguna'})`)
+      }
+    }
+    if (item.category === 'escudoEnergia' && equippedArmor) {
+      const compat = (equippedArmor.detalles.escudoCompatible as string) ?? ''
+      if (!isArmorShieldCompatible(compat, item.nombre)) {
+        warnings.push(`${equippedArmor.nombre} es incompatible con este escudo — no se activará (armadura compat: ${compat || 'ninguna'})`)
+      }
+    }
+
+    return warnings
+  }
+
+  function handleEquip(id: string) {
+    const item = inventario.find(i => i.id === id)
+    if (!item) return
+    const warnings = getEquipWarnings(item)
+    if (warnings.length > 0) {
+      const msg = '⚠ Advertencia:\n\n' + warnings.join('\n') + '\n\n¿Equipar de todas formas?'
+      if (!window.confirm(msg)) return
+    }
+    updateItem(id, { equipado: true })
+  }
+
   function updateItem(id: string, patch: Partial<InventoryItem>) {
     const newInv = inventario.map(i => i.id === id ? { ...i, ...patch } : i)
-    // If equipping armor, unequip other armor; same for energy shield
+    // If equipping armor, unequip other armor; same for energy shield and hand shield
     if (patch.equipado === true) {
       const item = inventario.find(i => i.id === id)
       const cat = item?.category
-      if (cat === 'armadura' || cat === 'escudoEnergia') {
+      if (cat === 'armadura' || cat === 'escudoEnergia' || cat === 'escudoMano') {
         for (let j = 0; j < newInv.length; j++) {
           const cur = newInv[j]!
+          // Only 1 armor, 1 energy shield, 1 hand shield at a time
           if (cur.category === cat && cur.id !== id) {
             newInv[j] = { ...cur, equipado: false }
           }
@@ -158,8 +203,9 @@ function InventorySection({
             const qr = qualityResistanceBonus(item.calidad) + qualityMetaBonus(item.calidad)
             const protections = ((item.detalles.caracteristicas as string[]) ?? [])
               .filter((s: string) => s.startsWith('Protección'))
+            const activeWarnings = item.equipado ? getEquipWarnings(item) : []
             return (
-              <div key={item.id} className="inv-card">
+              <div key={item.id} className={`inv-card ${activeWarnings.length > 0 ? 'inv-card-warn' : ''}`}>
                 <div className="inv-card-header">
                   <span className="inv-name">{item.nombre}</span>
                   <CalidadBadge calidad={item.calidad} />
@@ -174,8 +220,11 @@ function InventorySection({
                 {protections.length > 0 && (
                   <div className="inv-protections">{protections.join('; ')}</div>
                 )}
+                {activeWarnings.map((w, wi) => (
+                  <div key={wi} className="inv-warning">{w}</div>
+                ))}
                 <div className="inv-actions">
-                  <button className="inv-btn" onClick={() => updateItem(item.id, { equipado: !item.equipado })}>
+                  <button className="inv-btn" onClick={() => item.equipado ? updateItem(item.id, { equipado: false }) : handleEquip(item.id)}>
                     {item.equipado ? 'Desequipar' : 'Equipar'}
                   </button>
                   <button className="inv-btn inv-btn-danger" onClick={() => removeItem(item.id)}>Eliminar</button>
@@ -191,8 +240,9 @@ function InventorySection({
           <h3 className="inv-group-title">Escudos</h3>
           {shields.map(item => {
             const isEnergy = item.category === 'escudoEnergia'
+            const activeWarnings = item.equipado ? getEquipWarnings(item) : []
             return (
-              <div key={item.id} className="inv-card">
+              <div key={item.id} className={`inv-card ${activeWarnings.length > 0 ? 'inv-card-warn' : ''}`}>
                 <div className="inv-card-header">
                   <span className="inv-name">{item.nombre}</span>
                   <CalidadBadge calidad={item.calidad} />
@@ -211,8 +261,11 @@ function InventorySection({
                     {item.detalles.dano ? <span> · Daño: {String(item.detalles.dano)}</span> : null}
                   </div>
                 )}
+                {activeWarnings.map((w, wi) => (
+                  <div key={wi} className="inv-warning">{w}</div>
+                ))}
                 <div className="inv-actions">
-                  <button className="inv-btn" onClick={() => updateItem(item.id, { equipado: !item.equipado })}>
+                  <button className="inv-btn" onClick={() => item.equipado ? updateItem(item.id, { equipado: false }) : handleEquip(item.id)}>
                     {item.equipado ? 'Desequipar' : 'Equipar'}
                   </button>
                   <button className="inv-btn inv-btn-danger" onClick={() => removeItem(item.id)}>Eliminar</button>
@@ -280,7 +333,7 @@ function InventorySection({
                   </div>
                 )}
                 <div className="inv-actions">
-                  <button className="inv-btn" onClick={() => updateItem(item.id, { equipado: !item.equipado })}>
+                  <button className="inv-btn" onClick={() => item.equipado ? updateItem(item.id, { equipado: false }) : handleEquip(item.id)}>
                     {item.equipado ? 'Desequipar' : 'Equipar'}
                   </button>
                   <button className="inv-btn inv-btn-danger" onClick={() => removeItem(item.id)}>Eliminar</button>
@@ -877,6 +930,19 @@ export function EquipmentTab({ character, onUpdate }: EquipmentTabProps) {
           border-radius: var(--radius-sm);
           padding: var(--space-sm) var(--space-md);
           margin-bottom: var(--space-xs);
+        }
+        .inv-card-warn {
+          border-color: rgba(196, 74, 74, 0.5);
+          background: rgba(196, 74, 74, 0.05);
+        }
+        .inv-warning {
+          font-size: 0.75rem;
+          color: var(--color-danger);
+          background: rgba(196, 74, 74, 0.1);
+          border: 1px solid rgba(196, 74, 74, 0.3);
+          border-radius: var(--radius-sm);
+          padding: 2px var(--space-sm);
+          margin-top: var(--space-xs);
         }
         .inv-card-compact {
           padding: var(--space-xs) var(--space-md);
