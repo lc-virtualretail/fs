@@ -109,6 +109,31 @@ export interface EnergyShield {
   impactos: number
 }
 
+export type ItemCalidad = 'excelente' | 'maestra' | 'buena' | 'estandar' | 'mediocre' | 'deficiente' | 'deteriorada'
+
+export interface InventoryItem {
+  id: string
+  sourceId?: string
+  category: string
+  nombre: string
+  detalles: Record<string, unknown>
+  equipado: boolean
+  calidad: ItemCalidad
+  cargaActual?: number
+  cargaMaxima?: number
+  cargasExtra?: number
+  custom?: boolean
+  notas?: string
+}
+
+export interface Recurso {
+  nombre: string
+  ubicacion: string
+  ganancias: number
+  periodo: 'diario' | 'semanal' | 'mensual' | 'anual'
+  notas?: string
+}
+
 export interface Weapon {
   nombre: string
   nt: number
@@ -129,7 +154,7 @@ export interface EquipmentItem {
 
 export interface Money {
   efectivo: number
-  recursos: { nombre: string; ganancias: number }[]
+  recursos: Recurso[]
 }
 
 export interface ActionEntry {
@@ -235,6 +260,7 @@ export interface Character {
   equipo: EquipmentItem[]
   otrasPertenencias: { nombre: string; lugar: string }[]
   dinero: Money
+  inventario: InventoryItem[]
   tecgnosis: number
 
   // Affliction
