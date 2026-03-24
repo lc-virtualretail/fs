@@ -211,16 +211,21 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
           Elige 1 competencia sin restricciones. Puede ser cualquiera que no tengas ya.
         </p>
         <div className="choice-options" style={{ flexWrap: 'wrap' }}>
-          {availableComps.map(c => (
-            <Tooltip key={c} text={COMPETENCY_TOOLTIPS[c]}>
-              <button
-                className={`choice-btn ${freeComp === c ? 'chosen' : ''}`}
-                onClick={() => { setFreeComp(c); setFreeCompSub('') }}
-              >
-                {getDisplayLabel(c)}
-              </button>
-            </Tooltip>
-          ))}
+          {availableComps.map(c => {
+            const sub = getSubChoice(c)
+            const allSubsOwned = sub?.type === 'buttons' && sub.options.every(opt => chosenCompNames.includes(resolveWithSub(c, opt)))
+            return (
+              <Tooltip key={c} text={allSubsOwned ? 'Todas las subcategorías ya adquiridas' : COMPETENCY_TOOLTIPS[c]}>
+                <button
+                  className={`choice-btn ${freeComp === c ? 'chosen' : ''} ${allSubsOwned ? 'choice-btn-disabled' : ''}`}
+                  onClick={() => { if (!allSubsOwned) { setFreeComp(c); setFreeCompSub('') } }}
+                  disabled={allSubsOwned}
+                >
+                  {getDisplayLabel(c)}{allSubsOwned ? ' (ya adquirida)' : ''}
+                </button>
+              </Tooltip>
+            )
+          })}
         </div>
         {freeCompSubChoice && (
           <div style={{ marginTop: 'var(--space-sm)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
@@ -229,16 +234,21 @@ export function StepCustomization({ draft, updateDraft, goNext, goBack }: StepPr
             </div>
             {freeCompSubChoice.type === 'buttons' ? (
               <div className="choice-options" style={{ flexWrap: 'wrap' }}>
-                {freeCompSubChoice.options.map(opt => (
-                  <Tooltip key={opt} text={COMPETENCY_TOOLTIPS[opt]}>
-                    <button
-                      className={`choice-btn ${freeCompSub === opt ? 'chosen' : ''}`}
-                      onClick={() => setFreeCompSub(opt)}
-                    >
-                      {opt}
-                    </button>
-                  </Tooltip>
-                ))}
+                {freeCompSubChoice.options.map(opt => {
+                  const resolved = resolveWithSub(freeComp, opt)
+                  const alreadyOwned = chosenCompNames.includes(resolved)
+                  return (
+                    <Tooltip key={opt} text={alreadyOwned ? 'Ya adquirida' : COMPETENCY_TOOLTIPS[opt]}>
+                      <button
+                        className={`choice-btn ${freeCompSub === opt ? 'chosen' : ''} ${alreadyOwned ? 'choice-btn-disabled' : ''}`}
+                        onClick={() => !alreadyOwned && setFreeCompSub(opt)}
+                        disabled={alreadyOwned}
+                      >
+                        {opt}{alreadyOwned ? ' (ya adquirida)' : ''}
+                      </button>
+                    </Tooltip>
+                  )
+                })}
               </div>
             ) : (
               <input
