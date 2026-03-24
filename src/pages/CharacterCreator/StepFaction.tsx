@@ -354,23 +354,32 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
               <div key={gi} className="choice-group">
                 <div className="choice-group-label">Elige 1 competencia:</div>
                 <div className="choice-options">
-                  {group.map(c => (
-                    <Tooltip key={c} text={COMPETENCY_TOOLTIPS[c]}>
-                      <button
-                        className={`choice-btn ${compGroupChoices[gi] === c ? 'chosen' : ''}`}
-                        onClick={() => {
-                          setCompGroupChoices(prev => {
-                            const next = [...prev]
-                            next[gi] = c
-                            return next
-                          })
-                          setCompGroupSubChoices(prev => { const next = { ...prev }; delete next[gi]; return next })
-                        }}
-                      >
-                        {getDisplayLabel(c)}
-                      </button>
-                    </Tooltip>
-                  ))}
+                  {group.map(c => {
+                    const sub = getSubChoice(c)
+                    const owned = getOwnedCompetencies(gi)
+                    const isOwned = !sub && owned.has(c)
+                    const allSubsOwned = sub?.type === 'buttons' && sub.options.every(opt => owned.has(resolveWithSub(c, opt)))
+                    const disabled = isOwned || allSubsOwned
+                    return (
+                      <Tooltip key={c} text={disabled ? 'Ya adquirida' : COMPETENCY_TOOLTIPS[c]}>
+                        <button
+                          className={`choice-btn ${compGroupChoices[gi] === c ? 'chosen' : ''} ${disabled ? 'choice-btn-disabled' : ''}`}
+                          onClick={() => {
+                            if (disabled) return
+                            setCompGroupChoices(prev => {
+                              const next = [...prev]
+                              next[gi] = c
+                              return next
+                            })
+                            setCompGroupSubChoices(prev => { const next = { ...prev }; delete next[gi]; return next })
+                          }}
+                          disabled={disabled}
+                        >
+                          {getDisplayLabel(c)}{disabled ? ' (ya adquirida)' : ''}
+                        </button>
+                      </Tooltip>
+                    )
+                  })}
                 </div>
                 {/* Sub-choice when selected option requires further specification */}
                 {compGroupChoices[gi] && (() => {

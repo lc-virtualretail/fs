@@ -227,19 +227,30 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
                   {slot.length > 1 ? ' — elige 1:' : ':'}
                 </div>
                 <div className="choice-options">
-                  {slot.map(option => (
-                    <Tooltip key={option} text={COMPETENCY_TOOLTIPS[option]}>
-                      <button
-                        className={`choice-btn ${compChoices[slotIdx] === option ? 'chosen' : ''}`}
-                        onClick={() => {
-                          setCompChoices(prev => ({ ...prev, [slotIdx]: option }))
-                          setCompSubChoices(prev => { const next = { ...prev }; delete next[slotIdx]; return next })
-                        }}
-                      >
-                        {getDisplayLabel(option)}
-                      </button>
-                    </Tooltip>
-                  ))}
+                  {slot.map(option => {
+                    const sub = getSubChoice(option)
+                    const owned = getOwnedCompetencies(slotIdx)
+                    // Fully resolved (no sub-choice): disable if already owned
+                    const isOwned = !sub && owned.has(option)
+                    // Has sub-choices: disable if ALL sub-options are already owned
+                    const allSubsOwned = sub?.type === 'buttons' && sub.options.every(opt => owned.has(resolveWithSub(option, opt)))
+                    const disabled = isOwned || allSubsOwned
+                    return (
+                      <Tooltip key={option} text={disabled ? 'Ya adquirida' : COMPETENCY_TOOLTIPS[option]}>
+                        <button
+                          className={`choice-btn ${compChoices[slotIdx] === option ? 'chosen' : ''} ${disabled ? 'choice-btn-disabled' : ''}`}
+                          onClick={() => {
+                            if (disabled) return
+                            setCompChoices(prev => ({ ...prev, [slotIdx]: option }))
+                            setCompSubChoices(prev => { const next = { ...prev }; delete next[slotIdx]; return next })
+                          }}
+                          disabled={disabled}
+                        >
+                          {getDisplayLabel(option)}{disabled ? ' (ya adquirida)' : ''}
+                        </button>
+                      </Tooltip>
+                    )
+                  })}
                 </div>
                 {/* Sub-choice when selected option requires further specification */}
                 {compChoices[slotIdx] && (() => {
