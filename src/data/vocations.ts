@@ -92,7 +92,7 @@ export const VOCATIONS: VocationDefinition[] = [
     descripcion: 'Caballero de la Compañía del Fénix, brigada personal del emperador Alexius. Explorador y conquistador de tierras desconocidas.',
     libre: false,
     carrera: {
-      competencias: [['Armas Militares', 'Armas a Distancia'], ['Saber de Red de Salto (bárbaras)', 'Armadura de Combate']],
+      competencias: [['Armas Militares', 'Armas a Distancia'], ['Saber de Red de Salto (bárbaras)', 'Armadura (cualquiera)']],
       caracteristicas: [
         { caracteristica: 'constitucion', valor: 1 },
         { caracteristica: 'fe', valor: 1 },
@@ -118,7 +118,7 @@ export const VOCATIONS: VocationDefinition[] = [
     descripcion: 'Combatiente elegante y peligroso que lucha por el honor de su casa. Entrenado desde la infancia en el arte del duelo.',
     libre: false,
     carrera: {
-      competencias: [['Armadura de Combate'], ['Armas Militares']],
+      competencias: [['Armadura (cualquiera)'], ['Armas Militares']],
       caracteristicas: [
         { caracteristica: 'constitucion', valor: 1 },
         { caracteristica: 'destreza', valor: 1 },
@@ -256,7 +256,7 @@ export const VOCATIONS: VocationDefinition[] = [
     descripcion: 'Caballero que ha jurado servir a su orden sagrada o caballeresca por encima de todas las demás lealtades.',
     libre: false,
     carrera: {
-      competencias: [['Armadura (Combate o Guerra)', 'Saber de Red de Salto'], ['Armas Militares', 'Armas a Distancia']],
+      competencias: [['Armadura (cualquiera)', 'Saber de Red de Salto'], ['Armas Militares', 'Armas a Distancia']],
       caracteristicas: [
         { caracteristica: 'fe', valor: 2 },
         { caracteristica: 'fuerza', valor: 2 },
@@ -338,7 +338,7 @@ export const VOCATIONS: VocationDefinition[] = [
     descripcion: 'Enviado del Emperador con plenos poderes en las facciones religiosas. Combina habilidades diplomáticas y militares.',
     libre: false,
     carrera: {
-      competencias: [['Armadura de Combate', 'Armas (cualquiera)'], ['Saber de Red de Salto']],
+      competencias: [['Armadura (cualquiera)', 'Armas (cualquiera)'], ['Saber de Red de Salto']],
       caracteristicas: [
         { caracteristica: 'constitucion', valor: 1 },
         { caracteristica: 'fe', valor: 1, alternativas: ['voluntad'] },
@@ -1134,7 +1134,7 @@ export const VOCATIONS: VocationDefinition[] = [
     libre: true,
     especial: 'Recibes 1 punto en la característica Psi, que puedes aumentar usando los puntos de característica que recibes en cada nivel.',
     carrera: {
-      competencias: [['Armadura de Combate', 'Saber Oculto'], ['Armas a Distancia', 'Armas Militares', 'Saber Marcial']],
+      competencias: [['Armadura (cualquiera)', 'Saber Oculto'], ['Armas a Distancia', 'Armas Militares', 'Saber Marcial']],
       caracteristicas: [
         { caracteristica: 'voluntad', valor: 2 },
         { caracteristica: 'destreza', valor: 1, alternativas: ['fuerza'] },

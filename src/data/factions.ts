@@ -131,7 +131,7 @@ export const FACTIONS: FactionDefinition[] = [
     aprendizaje: {
       competenciasFijas: ['Saber de Facción (Hazat)', 'Saber Marcial'],
       competenciasEleccion: [
-        ['Armas a Distancia', 'Armadura de Combate', 'Saber (cualquiera)'],
+        ['Armas a Distancia', 'Armadura (cualquiera)', 'Saber (cualquiera)'],
       ],
       caracteristicas: [
         { caracteristica: 'destreza', valor: 2, alternativas: ['fuerza'] },
@@ -205,7 +205,7 @@ export const FACTIONS: FactionDefinition[] = [
     aprendizaje: {
       competenciasFijas: ['Armas Militares', 'Saber de Facción (Hermanos de Batalla)'],
       competenciasEleccion: [
-        ['Armadura de Combate', 'Armadura de Guerra', 'Armas a Distancia'],
+        ['Armadura (cualquiera)', 'Armas a Distancia'],
       ],
       caracteristicas: [
         { caracteristica: 'destreza', valor: 1 },
@@ -567,7 +567,7 @@ export const FACTIONS: FactionDefinition[] = [
     aprendizaje: {
       competenciasFijas: ['Saber Marcial'],
       competenciasEleccion: [
-        ['Armadura de Combate', 'Armadura de Guerra'],
+        ['Armadura (cualquiera)'],
         ['Armamento Pesado (Artillería)', 'Armamento Pesado (Artillería Montada)', 'Armamento Pesado (Demoliciones)'],
       ],
       caracteristicas: [
@@ -706,7 +706,7 @@ export const FACTIONS: FactionDefinition[] = [
     aprendizaje: {
       competenciasFijas: ['Hablar (vuldrok)'],
       competenciasEleccion: [
-        ['Armadura de Combate', 'Armadura de Guerra', 'Armas Militares'],
+        ['Armadura (cualquiera)', 'Armas Militares'],
         ['Saber de Facción (Vuldrok)', 'Saber de Oficios'],
       ],
       caracteristicas: [

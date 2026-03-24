@@ -8,6 +8,7 @@ import {
   qualityResistanceBonus,
   qualityMetaBonus,
   calcStrengthPenalty,
+  getCompetencyWarnings,
 } from '@/engine/inventory'
 import type { Character, InventoryItem, Recurso } from '@/types/character'
 import AddEquipmentModal from './AddEquipmentModal'
@@ -474,6 +475,9 @@ export function EquipmentTab({ character, onUpdate }: EquipmentTabProps) {
       )
     : null
 
+  // Armor/shield competency warnings
+  const competencyWarnings = getCompetencyWarnings(inventario, character.competencias ?? [])
+
   // Weapon strength warnings
   const weaponWarnings: { nombre: string; penalty: number }[] = []
   for (const item of inventario) {
@@ -652,6 +656,14 @@ export function EquipmentTab({ character, onUpdate }: EquipmentTabProps) {
               </div>
             )}
 
+            {/* Armor/shield competency */}
+            {competencyWarnings.map((w, i) => (
+              <div key={`comp-${i}`} className="restriction-row restriction-danger">
+                <span className="restriction-label">Competencia</span>
+                <span>{w.item}: falta «{w.competencia}» — {w.penalidad}</span>
+              </div>
+            ))}
+
             {/* Weapon strength */}
             {weaponWarnings.map((w, i) => (
               <div key={i} className="restriction-row restriction-danger">
@@ -660,7 +672,7 @@ export function EquipmentTab({ character, onUpdate }: EquipmentTabProps) {
               </div>
             ))}
 
-            {!tecgnosisOverloaded && !equippedShield && armorShieldCompat === null && weaponWarnings.length === 0 && (
+            {!tecgnosisOverloaded && !equippedShield && armorShieldCompat === null && competencyWarnings.length === 0 && weaponWarnings.length === 0 && (
               <p className="equip-empty">Sin restricciones activas.</p>
             )}
           </div>

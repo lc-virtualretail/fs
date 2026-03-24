@@ -1,4 +1,4 @@
-import type { Character, InventoryItem, ItemCalidad } from '@/types/character'
+import type { Character, CompetencyEntry, InventoryItem, ItemCalidad } from '@/types/character'
 
 // ─── Size System ───
 
@@ -205,6 +205,81 @@ export function getEquippedArmorProtections(inventario: InventoryItem[]): string
     return [protections]
   }
   return []
+}
+
+// ─── Armor/Shield Competency Checks ───
+
+export interface CompetencyWarning {
+  item: string
+  competencia: string
+  penalidad: string
+}
+
+/**
+ * Checks equipped armor and hand shields against character competencies.
+ * Returns warnings for missing competencies (unfavorable Vigor/attack rolls).
+ *
+ * Rules:
+ * - Civil armor: no competency needed
+ * - Combat armor (combate): requires "Armadura de Combate"
+ * - War armor (guerra): requires "Armadura de Guerra"
+ * - Space armor (espacial): requires "Armadura de Guerra" + "Operaciones a Bordo"
+ * - Hand shield: requires "Escudo de Mano"
+ */
+export function getCompetencyWarnings(
+  inventario: InventoryItem[],
+  competencias: CompetencyEntry[],
+): CompetencyWarning[] {
+  const warnings: CompetencyWarning[] = []
+  const compNames = new Set(competencias.map(c => c.nombre))
+
+  // Check both canonical and legacy name formats
+  const hasArmorCombat = compNames.has('Armadura de Combate') || compNames.has('Armadura (Combate)')
+  const hasArmorWar = compNames.has('Armadura de Guerra') || compNames.has('Armadura (Guerra)')
+
+  for (const item of inventario) {
+    if (!item.equipado) continue
+
+    if (item.category === 'armadura') {
+      const subtype = item.detalles['subtype'] as string | undefined
+      if (subtype === 'combate' && !hasArmorCombat) {
+        warnings.push({
+          item: item.nombre,
+          competencia: 'Armadura de Combate',
+          penalidad: 'Tiradas de Vigor desfavorables',
+        })
+      } else if (subtype === 'guerra') {
+        if (!hasArmorWar) {
+          warnings.push({
+            item: item.nombre,
+            competencia: 'Armadura de Guerra',
+            penalidad: 'Tiradas de Vigor desfavorables',
+          })
+        }
+      } else if (subtype === 'espacial') {
+        const missing: string[] = []
+        if (!hasArmorWar) missing.push('Armadura de Guerra')
+        if (!compNames.has('Operaciones a Bordo')) missing.push('Operaciones a Bordo')
+        if (missing.length > 0) {
+          warnings.push({
+            item: item.nombre,
+            competencia: missing.join(' + '),
+            penalidad: 'Tiradas de Vigor desfavorables',
+          })
+        }
+      }
+    }
+
+    if (item.category === 'escudoMano' && !compNames.has('Escudo de Mano')) {
+      warnings.push({
+        item: item.nombre,
+        competencia: 'Escudo de Mano',
+        penalidad: 'Tiradas de Vigor y de ataque desfavorables',
+      })
+    }
+  }
+
+  return warnings
 }
 
 // ─── Migration ───

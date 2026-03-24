@@ -99,7 +99,7 @@ const bareCategorySubChoices: Record<string, { options: string[]; resolveToSub: 
  * resolveToSub: when true, resolved name is just the chosen option.
  */
 const knownSubTypes: Record<string, { options: string[]; resolveToSub: boolean }> = {
-  'Armadura': { options: ['Combate', 'Guerra'], resolveToSub: false },
+  'Armadura': { options: ['Armadura de Combate', 'Armadura de Guerra'], resolveToSub: true },
   'Instrumento Musical': {
     options: ['Cuerda', 'Viento madera', 'Percusión', 'Teclado', 'Viento metal'],
     resolveToSub: false,
