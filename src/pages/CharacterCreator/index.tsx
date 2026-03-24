@@ -298,6 +298,14 @@ export function CharacterCreator() {
           background: rgba(196, 163, 90, 0.15);
           color: var(--color-accent);
         }
+        .choice-btn-disabled,
+        .choice-btn-disabled:hover {
+          opacity: 0.4;
+          cursor: not-allowed;
+          border-color: var(--color-border);
+          background: var(--color-bg-surface);
+          color: var(--color-text-muted);
+        }
 
         .chars-table {
           width: 100%;

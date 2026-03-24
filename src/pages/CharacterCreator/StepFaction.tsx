@@ -9,6 +9,34 @@ import { getSubChoice, getDisplayLabel, resolveWithSub } from './competencyUtils
 import { Tooltip } from '@/components/ui/Tooltip'
 import { COMPETENCY_TOOLTIPS, CHARACTERISTIC_TOOLTIPS, SKILL_TOOLTIPS, BENEFIT_TOOLTIPS } from '@/data/tooltips'
 
+function FixedSubChoiceButtons({ comp, options, selected, owned, onSelect }: {
+  comp: string
+  options: string[]
+  selected: string | undefined
+  owned: Set<string>
+  onSelect: (opt: string) => void
+}) {
+  return (
+    <div className="choice-options">
+      {options.map(opt => {
+        const resolved = resolveWithSub(comp, opt)
+        const alreadyOwned = owned.has(resolved)
+        return (
+          <Tooltip key={opt} text={alreadyOwned ? 'Ya adquirida' : (COMPETENCY_TOOLTIPS[`${comp} (${opt})`] || COMPETENCY_TOOLTIPS[opt])}>
+            <button
+              className={`choice-btn ${selected === opt ? 'chosen' : ''} ${alreadyOwned ? 'choice-btn-disabled' : ''}`}
+              onClick={() => !alreadyOwned && onSelect(opt)}
+              disabled={alreadyOwned}
+            >
+              {opt}{alreadyOwned ? ' (ya adquirida)' : ''}
+            </button>
+          </Tooltip>
+        )
+      })}
+    </div>
+  )
+}
+
 export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
   const availableFactions = FACTIONS.filter(f => f.clase === draft.clase)
   const selectedFaction = FACTIONS.find(f => f.id === draft.faccion)
@@ -126,6 +154,30 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
     goNext()
   }
 
+  // Compute already-owned competency names (from previous steps + fixed comps + other choice groups)
+  function getOwnedCompetencies(excludeGroupIdx?: number): Set<string> {
+    const owned = new Set(baseSnapshot.competencias.map(c => c.nombre))
+    // Add resolved fixed competencies from this step
+    if (selectedFaction) {
+      for (const [i, c] of selectedFaction.aprendizaje.competenciasFijas.entries()) {
+        const level1 = resolveWithSub(c, fixedSubChoices[i])
+        const resolved = resolveWithSub(level1, fixedSubChoices2[i])
+        if (resolved && resolved !== c) owned.add(resolved)
+        else if (!getSubChoice(c)) owned.add(c)
+      }
+    }
+    // Add resolved competencies from other choice groups
+    for (const [idx, chosen] of compGroupChoices.entries()) {
+      if (!chosen || idx === excludeGroupIdx) continue
+      if (compGroupSubChoices[idx]) {
+        owned.add(resolveWithSub(chosen, compGroupSubChoices[idx]))
+      } else if (!getSubChoice(chosen)) {
+        owned.add(chosen)
+      }
+    }
+    return owned
+  }
+
   // Validation
   const compGroupsComplete = !selectedFaction || selectedFaction.aprendizaje.competenciasEleccion.every((_, gi) => {
     const chosen = compGroupChoices[gi]
@@ -241,21 +293,16 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                           Especifica subcategoría:
                         </div>
                         {sub.type === 'buttons' ? (
-                          <div className="choice-options">
-                            {sub.options.map(opt => (
-                              <Tooltip key={opt} text={COMPETENCY_TOOLTIPS[`${c} (${opt})`] || COMPETENCY_TOOLTIPS[opt]}>
-                                <button
-                                  className={`choice-btn ${fixedSubChoices[i] === opt ? 'chosen' : ''}`}
-                                  onClick={() => {
-                                    setFixedSubChoices(prev => ({ ...prev, [i]: opt }))
-                                    setFixedSubChoices2(prev => { const next = { ...prev }; delete next[i]; return next })
-                                  }}
-                                >
-                                  {opt}
-                                </button>
-                              </Tooltip>
-                            ))}
-                          </div>
+                          <FixedSubChoiceButtons
+                            comp={c}
+                            options={sub.options}
+                            selected={fixedSubChoices[i]}
+                            owned={getOwnedCompetencies()}
+                            onSelect={(opt) => {
+                              setFixedSubChoices(prev => ({ ...prev, [i]: opt }))
+                              setFixedSubChoices2(prev => { const next = { ...prev }; delete next[i]; return next })
+                            }}
+                          />
                         ) : (
                           <input
                             type="text"
@@ -329,6 +376,7 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                 {compGroupChoices[gi] && (() => {
                   const sub = getSubChoice(compGroupChoices[gi])
                   if (!sub) return null
+                  const owned = getOwnedCompetencies(gi)
                   return (
                     <div style={{ marginTop: 'var(--space-xs)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
                       <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
@@ -336,16 +384,21 @@ export function StepFaction({ draft, updateDraft, goNext, goBack }: StepProps) {
                       </div>
                       {sub.type === 'buttons' ? (
                         <div className="choice-options">
-                          {sub.options.map(opt => (
-                            <Tooltip key={opt} text={COMPETENCY_TOOLTIPS[`${compGroupChoices[gi]} (${opt})`] || COMPETENCY_TOOLTIPS[opt]}>
-                              <button
-                                className={`choice-btn ${compGroupSubChoices[gi] === opt ? 'chosen' : ''}`}
-                                onClick={() => setCompGroupSubChoices(prev => ({ ...prev, [gi]: opt }))}
-                              >
-                                {opt}
-                              </button>
-                            </Tooltip>
-                          ))}
+                          {sub.options.map(opt => {
+                            const resolved = resolveWithSub(compGroupChoices[gi]!, opt)
+                            const alreadyOwned = owned.has(resolved)
+                            return (
+                              <Tooltip key={opt} text={alreadyOwned ? 'Ya adquirida' : (COMPETENCY_TOOLTIPS[`${compGroupChoices[gi]} (${opt})`] || COMPETENCY_TOOLTIPS[opt])}>
+                                <button
+                                  className={`choice-btn ${compGroupSubChoices[gi] === opt ? 'chosen' : ''} ${alreadyOwned ? 'choice-btn-disabled' : ''}`}
+                                  onClick={() => !alreadyOwned && setCompGroupSubChoices(prev => ({ ...prev, [gi]: opt }))}
+                                  disabled={alreadyOwned}
+                                >
+                                  {opt}{alreadyOwned ? ' (ya adquirida)' : ''}
+                                </button>
+                              </Tooltip>
+                            )
+                          })}
                         </div>
                       ) : (
                         <input

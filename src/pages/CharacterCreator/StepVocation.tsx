@@ -140,6 +140,23 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
     goNext()
   }
 
+  // Compute already-owned competency names (from previous steps + other slots in this step)
+  function getOwnedCompetencies(excludeSlot?: number): Set<string> {
+    const owned = new Set(baseSnapshot.competencias.map(c => c.nombre))
+    // Add resolved competencies from other slots in this step
+    for (const [idx, chosen] of Object.entries(compChoices)) {
+      const i = Number(idx)
+      if (i === excludeSlot) continue
+      if (compSubChoices[i]) {
+        owned.add(resolveWithSub(chosen, compSubChoices[i]))
+      } else if (!getSubChoice(chosen)) {
+        // Fully resolved (no sub-choice needed)
+        owned.add(chosen)
+      }
+    }
+    return owned
+  }
+
   const allSkillChoicesMade = !selectedVocation || (
     selectedVocation.carrera.habilidades.every((b, i) =>
       !b.alternativas || b.alternativas.length === 0 || skillChoices[i]
@@ -228,6 +245,7 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
                 {compChoices[slotIdx] && (() => {
                   const sub = getSubChoice(compChoices[slotIdx])
                   if (!sub) return null
+                  const owned = getOwnedCompetencies(slotIdx)
                   return (
                     <div style={{ marginTop: 'var(--space-xs)', paddingLeft: 'var(--space-sm)', borderLeft: '2px solid var(--color-accent)' }}>
                       <div className="choice-group-label" style={{ marginBottom: 'var(--space-xs)' }}>
@@ -235,16 +253,21 @@ export function StepVocation({ draft, updateDraft, goNext, goBack }: StepProps) 
                       </div>
                       {sub.type === 'buttons' ? (
                         <div className="choice-options">
-                          {sub.options.map(opt => (
-                            <Tooltip key={opt} text={COMPETENCY_TOOLTIPS[`${compChoices[slotIdx]} (${opt})`] || COMPETENCY_TOOLTIPS[opt]}>
-                              <button
-                                className={`choice-btn ${compSubChoices[slotIdx] === opt ? 'chosen' : ''}`}
-                                onClick={() => setCompSubChoices(prev => ({ ...prev, [slotIdx]: opt }))}
-                              >
-                                {opt}
-                              </button>
-                            </Tooltip>
-                          ))}
+                          {sub.options.map(opt => {
+                            const resolved = resolveWithSub(compChoices[slotIdx]!, opt)
+                            const alreadyOwned = owned.has(resolved)
+                            return (
+                              <Tooltip key={opt} text={alreadyOwned ? `Ya adquirida` : (COMPETENCY_TOOLTIPS[`${compChoices[slotIdx]} (${opt})`] || COMPETENCY_TOOLTIPS[opt])}>
+                                <button
+                                  className={`choice-btn ${compSubChoices[slotIdx] === opt ? 'chosen' : ''} ${alreadyOwned ? 'choice-btn-disabled' : ''}`}
+                                  onClick={() => !alreadyOwned && setCompSubChoices(prev => ({ ...prev, [slotIdx]: opt }))}
+                                  disabled={alreadyOwned}
+                                >
+                                  {opt}{alreadyOwned ? ' (ya adquirida)' : ''}
+                                </button>
+                              </Tooltip>
+                            )
+                          })}
                         </div>
                       ) : (
                         <input
