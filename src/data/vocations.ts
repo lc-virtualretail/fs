@@ -505,7 +505,7 @@ export const VOCATIONS: VocationDefinition[] = [
         { habilidad: 'supervivencia', valor: 1 },
         { habilidad: 'vigor', valor: 1 },
       ],
-      beneficios: ['Armado hasta los Dientes', 'Condicionamiento Mental', 'Dos Pistolas', 'Imbuir Sagrario', 'Inalterable', 'Instinto Marcial', 'Mantok', 'Nacido en el Campo de Batalla', 'Resistente'],
+      beneficios: ['Armado hasta los Dientes', 'Condicionamiento Mental', 'Dos Pistolas', 'Imbuir Sagrario', 'Inalterable', 'Instinto Marcial', 'Mantok', 'Nacido en el Campo de Batalla', 'Resistente', 'Ritos Teúrgicos', 'Salvación'],
       equipo: ['Arma excelente (meta +1) o armadura excelente (Resistencia Corporal +1)'],
     },
   },
